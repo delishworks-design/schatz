@@ -74,7 +74,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final profiles = await _providerService.getProfiles();
     if (profiles.isNotEmpty) {
       if (savedActiveId != null) {
-        _activeProvider = profiles.where((p) => p.id == savedActiveId).firstOrNull ?? profiles.first;
+        _activeProvider =
+            profiles.where((p) => p.id == savedActiveId).firstOrNull ??
+                profiles.first;
       } else {
         _activeProvider = profiles.first;
       }

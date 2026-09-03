@@ -37,8 +37,7 @@ class CapabilityRegistry {
 
   List<Map<String, dynamic>> toOpenAITools() {
     final allTools = _toolRegistry.getAllTools();
-    if (_cachedOpenAITools != null &&
-        _cachedToolCount == allTools.length) {
+    if (_cachedOpenAITools != null && _cachedToolCount == allTools.length) {
       return _cachedOpenAITools!;
     }
 
@@ -85,8 +84,7 @@ class CapabilityRegistry {
 
   String buildSystemPromptToolsSection() {
     final allTools = _toolRegistry.getAllTools();
-    if (_cachedSystemPrompt != null &&
-        _cachedToolCount == allTools.length) {
+    if (_cachedSystemPrompt != null && _cachedToolCount == allTools.length) {
       return _cachedSystemPrompt!;
     }
 

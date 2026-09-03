@@ -1,0 +1,4 @@
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class com.schatz.ai.** { *; }
+-dontwarn javax.annotation.**

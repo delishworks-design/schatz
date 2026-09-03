@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:dartssh2/dartssh2.dart';
 import '../../core/security/secure_storage.dart';
 
@@ -39,18 +40,18 @@ class SSHConfig {
       };
 
   factory SSHConfig.fromJson(Map<String, dynamic> json) => SSHConfig(
-        host: json['host'] ?? '127.0.0.1',
+        host: json['host'] ?? '',
         port: json['port'] ?? 8022,
-        username: json['username'] ?? 'u0_a361',
-        password: json['password'] ?? '',
+        username: json['username'] ?? '',
+        password: json['password'],
       );
 
-  static const defaultConfig = SSHConfig(
-    host: '127.0.0.1',
-    port: 8022,
-    username: 'u0_a361',
-    password: '',
-  );
+  factory SSHConfig.defaults() => const SSHConfig(
+        host: '',
+        port: 8022,
+        username: '',
+        password: '',
+      );
 }
 
 class SSHService {
@@ -63,6 +64,7 @@ class SSHService {
   bool _isConnected = false;
   bool _isConnecting = false;
   DateTime? _lastActivity;
+  String? _savedHostKeyFingerprint;
 
   bool get isConnected => _isConnected && _client != null;
   SSHConfig? get config => _config;
@@ -70,10 +72,10 @@ class SSHService {
 
   Future<SSHConfig> loadConfig() async {
     final storage = SecureStorage();
-    final host = await storage.read('ssh_host') ?? '127.0.0.1';
-    final port = int.tryParse(await storage.read('ssh_port') ?? '8022') ?? 8022;
-    final username = await storage.read('ssh_username') ?? 'u0_a361';
-    final password = await storage.read('ssh_password') ?? '';
+    final host = await storage.read('ssh_host') ?? '';
+    final port = int.tryParse(await storage.read('ssh_port') ?? '') ?? 8022;
+    final username = await storage.read('ssh_username') ?? '';
+    final password = await storage.read('ssh_password');
 
     return SSHConfig(
       host: host,
@@ -89,9 +91,25 @@ class SSHService {
     await storage.write('ssh_host', config.host);
     await storage.write('ssh_port', config.port.toString());
     await storage.write('ssh_username', config.username);
-    if (config.password != null) {
+    if (config.password != null && config.password!.isNotEmpty) {
       await storage.write('ssh_password', config.password!);
     }
+  }
+
+  Future<String?> _loadKnownHostFingerprint() async {
+    final storage = SecureStorage();
+    return await storage.read('ssh_known_host_fingerprint');
+  }
+
+  Future<void> _saveKnownHostFingerprint(String fingerprint) async {
+    final storage = SecureStorage();
+    await storage.write('ssh_known_host_fingerprint', fingerprint);
+  }
+
+  String _fingerprintToHex(Uint8List fingerprint) {
+    return fingerprint
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join(':');
   }
 
   Future<bool> connect({SSHConfig? config}) async {
@@ -101,6 +119,12 @@ class SSHService {
       await disconnect();
 
       _config = config ?? await loadConfig();
+
+      if (_config!.host.isEmpty || _config!.username.isEmpty) {
+        return false;
+      }
+
+      _savedHostKeyFingerprint = await _loadKnownHostFingerprint();
 
       final socket = await SSHSocket.connect(
         _config!.host,
@@ -112,7 +136,20 @@ class SSHService {
         socket,
         username: _config!.username,
         onPasswordRequest: () => _config!.password ?? '',
+        onVerifyHostKey: (type, fingerprint) async {
+          final fpHex = _fingerprintToHex(fingerprint);
+          if (_savedHostKeyFingerprint == null) {
+            await _saveKnownHostFingerprint(fpHex);
+            _savedHostKeyFingerprint = fpHex;
+            return true;
+          }
+          return fpHex == _savedHostKeyFingerprint;
+        },
       );
+
+      final session = await _client!.execute('echo "connected"');
+      await session.done;
+      session.close();
 
       _isConnected = true;
       _lastActivity = DateTime.now();

@@ -329,6 +329,11 @@ class TermuxPlugin {
   static Future<ToolResult> _readFile(Map<String, dynamic> params) async {
     try {
       final path = params['path'];
+      if (!_isSafePath(path)) {
+        return ToolResult.failure(
+          'Path traversal is not allowed: $path',
+        );
+      }
       final escapedPath = path.replaceAll("'", "'\\''");
       final result = await _exec("cat '$escapedPath'");
 
@@ -349,6 +354,12 @@ class TermuxPlugin {
     try {
       final path = params['path'];
       final content = params['content'];
+
+      if (!_isSafePath(path)) {
+        return ToolResult.failure(
+          'Path traversal is not allowed: $path',
+        );
+      }
 
       final escapedPath = path.replaceAll("'", "'\\''");
       final escapedContent = content.replaceAll("'", "'\\''");
@@ -371,6 +382,11 @@ class TermuxPlugin {
   static Future<ToolResult> _fileExists(Map<String, dynamic> params) async {
     try {
       final path = params['path'];
+      if (!_isSafePath(path)) {
+        return ToolResult.failure(
+          'Path traversal is not allowed: $path',
+        );
+      }
       final escapedPath = path.replaceAll("'", "'\\''");
       final result = await _exec(
           "test -e '$escapedPath' && echo 'exists' || echo 'not_exists'");
@@ -389,6 +405,11 @@ class TermuxPlugin {
   static Future<ToolResult> _listDirectory(Map<String, dynamic> params) async {
     try {
       final path = params['path'] ?? '.';
+      if (!_isSafePath(path)) {
+        return ToolResult.failure(
+          'Path traversal is not allowed: $path',
+        );
+      }
       final escapedPath = path.replaceAll("'", "'\\''");
       final result = await _exec("ls -la '$escapedPath'");
 
@@ -421,5 +442,10 @@ class TermuxPlugin {
     } catch (e) {
       return ToolResult.failure('Failed to list directory: $e');
     }
+  }
+
+  static bool _isSafePath(String path) {
+    final normalized = path.replaceAll(RegExp(r'\\|/'), '/');
+    return !normalized.contains('..');
   }
 }

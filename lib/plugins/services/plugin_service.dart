@@ -4,6 +4,7 @@ import '../models/tool.dart';
 import '../../core/security/secure_storage.dart';
 import 'tool_registry.dart';
 import 'tool_executor.dart';
+import 'capability_registry.dart';
 import '../integrations/github/github_plugin.dart';
 import '../integrations/vercel/vercel_plugin.dart';
 import '../integrations/supabase/supabase_plugin.dart';
@@ -74,6 +75,11 @@ class PluginService {
       'installed_plugins',
       jsonEncode(plugins.map((p) => p.toJson()).toList()),
     );
+
+    if (plugin.enabled && _pluginRegistrars.containsKey(plugin.id)) {
+      _pluginRegistrars[plugin.id]!();
+    }
+    CapabilityRegistry().invalidateCache();
   }
 
   Future<void> uninstallPlugin(String pluginId) async {
@@ -87,6 +93,7 @@ class PluginService {
 
     _toolRegistry.unregisterPlugin(pluginId);
     _toolExecutor.unregisterExecutors(pluginId);
+    CapabilityRegistry().invalidateCache();
   }
 
   Future<void> togglePlugin(String pluginId, bool enabled) async {
@@ -106,6 +113,7 @@ class PluginService {
       } else if (_pluginRegistrars.containsKey(pluginId)) {
         _pluginRegistrars[pluginId]!();
       }
+      CapabilityRegistry().invalidateCache();
     }
   }
 

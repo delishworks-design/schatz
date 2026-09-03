@@ -213,14 +213,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) {
       Navigator.pushNamed(context, AppRouter.chat, arguments: {
         'conversationId': conversation.id,
-      });
+      }).then((_) => _loadConversations());
     }
   }
 
   void _openChat(Conversation conversation) {
     Navigator.pushNamed(context, AppRouter.chat, arguments: {
       'conversationId': conversation.id,
-    });
+    }).then((_) => _loadConversations());
   }
 
   void _deleteConversation(Conversation conversation) async {

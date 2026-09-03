@@ -27,6 +27,7 @@ class _ProviderSetupScreenState extends State<ProviderSetupScreen> {
   bool _isLoading = false;
   String? _error;
   SetupStatus? _currentStatus;
+  String? _selectedModelId;
 
   @override
   void initState() {
@@ -256,8 +257,10 @@ class _ProviderSetupScreenState extends State<ProviderSetupScreen> {
           const Text('No starter models available for this provider')
         else
           ...starterModels.map((model) {
+            final isSelected = _selectedModelId == model.modelId;
             return Card(
               margin: const EdgeInsets.only(bottom: 8),
+              color: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : null,
               child: ListTile(
                 leading: Icon(
                   _getCostIcon(model.costType),
@@ -268,7 +271,14 @@ class _ProviderSetupScreenState extends State<ProviderSetupScreen> {
                   '${model.description}${model.contextLength != null ? ' • ${model.contextLength! ~/ 1000}K context' : ''}',
                   style: const TextStyle(fontSize: 12),
                 ),
-                trailing: _getCostBadge(model.costType),
+                trailing: isSelected
+                    ? const Icon(Icons.check_circle, color: AppTheme.primaryColor)
+                    : _getCostBadge(model.costType),
+                onTap: () {
+                  setState(() {
+                    _selectedModelId = model.modelId;
+                  });
+                },
               ),
             );
           }),
@@ -352,6 +362,10 @@ class _ProviderSetupScreenState extends State<ProviderSetupScreen> {
       setState(() {
         _currentStep++;
         _error = null;
+        if (_currentStep == 2 && _selectedModelId == null) {
+          final type = ProviderType.values.firstWhere((t) => t.name == _selectedProviderType);
+          _selectedModelId = StarterModelCatalog.getDefaultStarterModel(type)?.modelId;
+        }
       });
     }
   }
@@ -391,7 +405,7 @@ class _ProviderSetupScreenState extends State<ProviderSetupScreen> {
         type: type,
         baseUrl: template.baseUrl,
         apiKeyReference: apiKeyRef,
-        selectedModel: defaultModel?.modelId,
+        selectedModel: _selectedModelId ?? defaultModel?.modelId,
         availableModels: starterModels,
         temperature: template.temperature,
         maxTokens: template.maxTokens,

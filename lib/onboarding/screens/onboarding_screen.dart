@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/routing/app_router.dart';
 import '../../providers/models/provider_templates.dart';
+import '../../providers/models/provider_profile.dart';
+import '../../providers/services/provider_service.dart';
 import '../../core/security/secure_storage.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -240,17 +242,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _completeOnboarding() async {
     final storage = SecureStorage();
+    final providerService = ProviderService();
     await storage.write('onboarding_complete', 'true');
 
     if (_selectedProvider != null) {
-      await storage.write('selected_provider', _selectedProvider!);
+      final template = ProviderTemplates.templates.firstWhere(
+        (t) => t.id == _selectedProvider,
+      );
+
+      final profile = ProviderProfile(
+        displayName: template.displayName,
+        type: template.type,
+        baseUrl: template.baseUrl,
+        apiKeyReference: template.apiKeyReference,
+        streamingEnabled: template.streamingEnabled,
+        visionEnabled: template.visionEnabled,
+      );
+
+      await providerService.saveProfile(profile);
+      await storage.write('active_provider_id', profile.id);
+
+      if (_apiKeyController.text.isNotEmpty) {
+        await storage.writeApiKey(
+            template.apiKeyReference, _apiKeyController.text);
+      }
     }
 
-    if (_apiKeyController.text.isNotEmpty) {
-      await storage.writeApiKey(
-          _selectedProvider ?? 'openrouter', _apiKeyController.text);
-    }
-
+    if (!mounted) return;
     Navigator.pushReplacementNamed(context, AppRouter.home);
   }
 

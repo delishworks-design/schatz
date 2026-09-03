@@ -37,12 +37,12 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
     });
 
     if (widget.providerId != null) {
-      try {
-        _selectedProvider = profiles.firstWhere(
-          (p) => p.id == widget.providerId,
-          orElse: () => profiles.isNotEmpty ? profiles.first : null!,
-        );
-      } catch (_) {}
+      final match = profiles.where((p) => p.id == widget.providerId).toList();
+      if (match.isNotEmpty) {
+        _selectedProvider = match.first;
+      } else if (profiles.isNotEmpty) {
+        _selectedProvider = profiles.first;
+      }
     }
   }
 

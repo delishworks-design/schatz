@@ -38,11 +38,9 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
   void _loadProvider() async {
     final profiles = await ProviderService().getProfiles();
     if (!mounted) return;
-    try {
-      final profile = profiles.firstWhere(
-        (p) => p.id == widget.providerId,
-        orElse: () => profiles.isNotEmpty ? profiles.first : null!,
-      );
+    final match = profiles.where((p) => p.id == widget.providerId).toList();
+    if (match.isNotEmpty) {
+      final profile = match.first;
       setState(() {
         _nameController.text = profile.displayName;
         _urlController.text = profile.baseUrl;
@@ -52,7 +50,18 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
         _maxTokens = profile.maxTokens;
         _streamingEnabled = profile.streamingEnabled;
       });
-    } catch (_) {
+    } else if (profiles.isNotEmpty) {
+      final profile = profiles.first;
+      setState(() {
+        _nameController.text = profile.displayName;
+        _urlController.text = profile.baseUrl;
+        _selectedType = profile.type;
+        _selectedModel = profile.selectedModel;
+        _temperature = profile.temperature;
+        _maxTokens = profile.maxTokens;
+        _streamingEnabled = profile.streamingEnabled;
+      });
+    } else {
       setState(() {
         _nameController.text = 'My Provider';
         _urlController.text = 'https://api.openai.com/v1';

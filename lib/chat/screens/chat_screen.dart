@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/errors/app_error.dart';
+import '../../core/security/secure_storage.dart';
 import '../../providers/models/provider_profile.dart';
 import '../../providers/services/provider_service.dart';
 import '../models/chat_message.dart';
@@ -68,9 +69,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     await _db.initialize();
 
+    final storage = SecureStorage();
+    final savedActiveId = await storage.read('active_provider_id');
     final profiles = await _providerService.getProfiles();
     if (profiles.isNotEmpty) {
-      _activeProvider = profiles.first;
+      if (savedActiveId != null) {
+        _activeProvider = profiles.where((p) => p.id == savedActiveId).firstOrNull ?? profiles.first;
+      } else {
+        _activeProvider = profiles.first;
+      }
     }
 
     if (conversationId != null) {
@@ -449,6 +456,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _stopGeneration() {
     _isCancelled = true;
+    _agentLoop.cancel();
     _cancelToken?.cancel('User cancelled');
 
     if (_currentStreamingContent.isNotEmpty && _conversation != null) {

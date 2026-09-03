@@ -40,8 +40,6 @@ class AgentLoop {
 
     try {
       final allMessages = List<ChatMessage>.from(messages);
-      final toolSchemas =
-          _capabilityRegistry.getToolSchemasForProvider(provider.type.name);
       final toolsSection = _capabilityRegistry.buildSystemPromptToolsSection();
 
       var effectiveSystemPrompt = systemPrompt ?? '';
@@ -84,14 +82,14 @@ class AgentLoop {
         if (_isCancelled) break;
 
         if (detectedToolCall != null) {
-          yield AgentEvent.toolStart(detectedToolCall!);
+          yield AgentEvent.toolStart(detectedToolCall);
 
           final result = await _pluginRouter.route(
-            detectedToolCall!.toolFullName,
-            detectedToolCall!.arguments,
+            detectedToolCall.toolFullName,
+            detectedToolCall.arguments,
           );
 
-          yield AgentEvent.toolComplete(detectedToolCall!, result);
+          yield AgentEvent.toolComplete(detectedToolCall, result);
 
           final toolMessage = ChatMessage(
             id: 'tool_${DateTime.now().millisecondsSinceEpoch}',
@@ -114,6 +112,7 @@ class AgentLoop {
             createdAt: DateTime.now(),
           );
           allMessages.add(assistantMsg);
+          fullResponse = '';
 
           continue;
         }

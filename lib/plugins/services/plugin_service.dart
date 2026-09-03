@@ -103,6 +103,8 @@ class PluginService {
       if (!enabled) {
         _toolRegistry.unregisterPlugin(pluginId);
         _toolExecutor.unregisterExecutors(pluginId);
+      } else if (_pluginRegistrars.containsKey(pluginId)) {
+        _pluginRegistrars[pluginId]!();
       }
     }
   }

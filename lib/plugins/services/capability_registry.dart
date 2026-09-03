@@ -1,4 +1,3 @@
-import 'dart:convert';
 import '../models/tool.dart';
 import 'tool_registry.dart';
 
@@ -10,7 +9,7 @@ class CapabilityRegistry {
   final ToolRegistry _toolRegistry = ToolRegistry();
   List<Map<String, dynamic>>? _cachedOpenAITools;
   String? _cachedSystemPrompt;
-  List<Tool>? _cachedTools;
+  int _cachedToolCount = -1;
 
   List<Tool> getAvailableTools({String? pluginFilter}) {
     final allTools = _toolRegistry.getAllTools();
@@ -37,8 +36,9 @@ class CapabilityRegistry {
   }
 
   List<Map<String, dynamic>> toOpenAITools() {
+    final allTools = _toolRegistry.getAllTools();
     if (_cachedOpenAITools != null &&
-        _cachedTools == _toolRegistry.getAllTools()) {
+        _cachedToolCount == allTools.length) {
       return _cachedOpenAITools!;
     }
 
@@ -79,13 +79,14 @@ class CapabilityRegistry {
     }).toList();
 
     _cachedOpenAITools = schemas;
-    _cachedTools = _toolRegistry.getAllTools();
+    _cachedToolCount = tools.length;
     return schemas;
   }
 
   String buildSystemPromptToolsSection() {
+    final allTools = _toolRegistry.getAllTools();
     if (_cachedSystemPrompt != null &&
-        _cachedTools == _toolRegistry.getAllTools()) {
+        _cachedToolCount == allTools.length) {
       return _cachedSystemPrompt!;
     }
 
@@ -128,14 +129,14 @@ class CapabilityRegistry {
     }
 
     _cachedSystemPrompt = buffer.toString();
-    _cachedTools = _toolRegistry.getAllTools();
+    _cachedToolCount = tools.length;
     return _cachedSystemPrompt!;
   }
 
   void invalidateCache() {
     _cachedOpenAITools = null;
     _cachedSystemPrompt = null;
-    _cachedTools = null;
+    _cachedToolCount = -1;
   }
 
   String _mapParameterType(ToolParameterType type) {

@@ -233,6 +233,7 @@ class _PluginDetailScreenState extends State<PluginDetailScreen> {
     setState(() => _isLoading = true);
 
     await _pluginService.savePlugin(_plugin!.copyWith(enabled: true));
+    await _pluginService.togglePlugin(_plugin!.id, true);
 
     if (!mounted) return;
     setState(() {

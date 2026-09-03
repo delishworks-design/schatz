@@ -2,18 +2,20 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../models/provider_profile.dart';
-import '../adapters/openai_adapter.dart';
+import '../adapters/adapter_registry.dart';
+import '../adapters/base_provider_adapter.dart';
 import '../../core/security/secure_storage.dart';
+import '../../core/storage/storage_keys.dart';
 
 class ProviderService {
   final SecureStorage _storage = SecureStorage();
-  final OpenAIAdapter _adapter = OpenAIAdapter();
+  final AdapterRegistry _registry = AdapterRegistry();
   List<ProviderProfile>? _cachedProfiles;
 
   Future<List<ProviderProfile>> getProfiles() async {
     if (_cachedProfiles != null) return _cachedProfiles!;
 
-    final data = await _storage.read('provider_profiles');
+    final data = await _storage.read(StorageKeys.providerProfiles);
     if (data == null) return [];
     try {
       final List<dynamic> jsonList = jsonDecode(data);
@@ -33,7 +35,7 @@ class ProviderService {
     } else {
       profiles.add(profile);
     }
-    await _storage.write('provider_profiles',
+    await _storage.write(StorageKeys.providerProfiles,
         jsonEncode(profiles.map((p) => p.toJson()).toList()));
     _cachedProfiles = profiles;
   }
@@ -41,13 +43,14 @@ class ProviderService {
   Future<void> deleteProfile(String profileId) async {
     final profiles = await getProfiles();
     profiles.removeWhere((p) => p.id == profileId);
-    await _storage.write('provider_profiles',
+    await _storage.write(StorageKeys.providerProfiles,
         jsonEncode(profiles.map((p) => p.toJson()).toList()));
     _cachedProfiles = profiles;
   }
 
-  Future<List<ProviderModel>> listModels(ProviderProfile profile) async {
-    return await _adapter.listModels(profile);
+  Future<List<ProviderModel>> listModels(ProviderProfile profile, {String? apiKeyOverride}) async {
+    final adapter = _registry.getAdapter(profile.type);
+    return await adapter.listModels(profile, apiKeyOverride: apiKeyOverride);
   }
 
   Stream<String> streamMessage({
@@ -55,12 +58,17 @@ class ProviderService {
     required List<Map<String, dynamic>> messages,
     String? systemPrompt,
     CancelToken? cancelToken,
+    List<Map<String, dynamic>>? tools,
+    String? apiKeyOverride,
   }) {
-    return _adapter.streamMessage(
+    final adapter = _registry.getAdapter(profile.type);
+    return adapter.streamMessage(
       profile: profile,
       messages: messages,
       systemPrompt: systemPrompt,
       cancelToken: cancelToken,
+      tools: tools,
+      apiKeyOverride: apiKeyOverride,
     );
   }
 
@@ -69,17 +77,23 @@ class ProviderService {
     required List<Map<String, dynamic>> messages,
     String? systemPrompt,
     CancelToken? cancelToken,
+    List<Map<String, dynamic>>? tools,
+    String? apiKeyOverride,
   }) async {
-    return await _adapter.sendMessage(
+    final adapter = _registry.getAdapter(profile.type);
+    return await adapter.sendMessage(
       profile: profile,
       messages: messages,
       systemPrompt: systemPrompt,
       cancelToken: cancelToken,
+      tools: tools,
+      apiKeyOverride: apiKeyOverride,
     );
   }
 
-  Future<ConnectionTestResult> testConnection(ProviderProfile profile) async {
-    return await _adapter.testConnection(profile);
+  Future<ConnectionTestResult> testConnection(ProviderProfile profile, {String? apiKeyOverride}) async {
+    final adapter = _registry.getAdapter(profile.type);
+    return await adapter.testConnection(profile, apiKeyOverride: apiKeyOverride);
   }
 
   ProviderProfile? findProviderForModel(String modelName) {
@@ -94,11 +108,23 @@ class ProviderService {
     return null;
   }
 
+  ProviderProfile? findProviderById(String providerId) {
+    final profiles = _cachedProfiles;
+    if (profiles == null || profiles.isEmpty) return null;
+
+    for (final profile in profiles) {
+      if (profile.id == providerId) {
+        return profile;
+      }
+    }
+    return null;
+  }
+
   void clearCache() {
     _cachedProfiles = null;
   }
 
   void dispose() {
-    _adapter.dispose();
+    _registry.dispose();
   }
 }

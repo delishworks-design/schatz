@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/routing/app_router.dart';
+import '../../core/security/secure_storage.dart';
 import '../models/conversation.dart';
 import '../database/chat_database.dart';
 import '../widgets/conversation_tile.dart';
 import '../widgets/empty_state.dart';
+import '../../providers/services/setup_bootstrap_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,15 +17,37 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ChatDatabase _db = ChatDatabase();
+  final SetupBootstrapService _bootstrapService = SetupBootstrapService();
   List<Conversation> _conversations = [];
   bool _isLoading = true;
   String _searchQuery = '';
   bool _showArchived = false;
+  bool _showSetupBanner = false;
+  SetupStatus? _setupStatus;
 
   @override
   void initState() {
     super.initState();
     _loadConversations();
+    _checkSetupStatus();
+  }
+
+  Future<void> _checkSetupStatus() async {
+    final storage = SecureStorage();
+    final setupSkipped = await storage.read('setup_skipped');
+    final result = await _bootstrapService.checkReadiness();
+
+    if (!mounted) return;
+
+    final shouldShowBanner = setupSkipped == 'true' ||
+        result.status == SetupStatus.needsApiKey ||
+        result.status == SetupStatus.needsModel ||
+        result.status == SetupStatus.needsConnectionCheck;
+
+    setState(() {
+      _showSetupBanner = shouldShowBanner;
+      _setupStatus = result.status;
+    });
   }
 
   Future<void> _loadConversations() async {
@@ -71,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
+          if (_showSetupBanner) _buildSetupBanner(),
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
@@ -117,6 +142,70 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Colors.black,
       ),
     );
+  }
+
+  Widget _buildSetupBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Setup incomplete',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  _getSetupBannerMessage(),
+                  style: const TextStyle(
+                    color: AppTheme.textSecondaryColor,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: _openSetup,
+            child: const Text('Complete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getSetupBannerMessage() {
+    switch (_setupStatus) {
+      case SetupStatus.needsApiKey:
+        return 'API key not configured';
+      case SetupStatus.needsModel:
+        return 'No model selected';
+      case SetupStatus.needsConnectionCheck:
+        return 'Connection check needed';
+      default:
+        return 'Tap to complete setup';
+    }
+  }
+
+  void _openSetup() {
+    Navigator.pushNamed(context, AppRouter.providerSetup).then((_) {
+      _checkSetupStatus();
+    });
   }
 
   void _newChat() async {

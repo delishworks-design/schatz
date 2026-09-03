@@ -9,7 +9,7 @@ import '../../core/errors/error_handler.dart';
 import '../../core/security/secure_storage.dart';
 import 'base_provider_adapter.dart';
 
-class OpenAIAdapter implements BaseProviderAdapter {
+class GeminiAdapter implements BaseProviderAdapter {
   final NetworkClient _client = NetworkClient();
   final SecureStorage _storage = SecureStorage();
 
@@ -24,27 +24,30 @@ class OpenAIAdapter implements BaseProviderAdapter {
 
     try {
       final response = await _client.get(
-        '$baseUrl/models',
-        headers: _buildHeaders(apiKey, profile.customHeaders),
+        '$baseUrl/models?key=$apiKey',
+        headers: {'Content-Type': 'application/json'},
       );
 
       final data = response.data;
-      if (data == null || data['data'] == null) {
+      if (data == null || data['models'] == null) {
         return [];
       }
 
-      return (data['data'] as List).map((model) {
+      return (data['models'] as List).map((model) {
+        final name = model['name'] ?? '';
         return ProviderModel(
-          id: model['id'] ?? '',
-          name: model['name'] ?? model['id'] ?? '',
+          id: name,
+          name: name.contains('/') ? name.split('/').last : name,
           providerId: profile.id,
-          contextLength: model['context_length'],
-          supportsVision: _detectVision(model['id'] ?? ''),
-          supportsToolCalling: _detectToolCalling(model['id'] ?? ''),
+          contextLength: _extractContextLength(model),
+          supportsVision: _detectVision(name),
+          supportsStreaming: _detectStreaming(model),
+          supportsToolCalling: _detectToolCalling(name),
+          description: model['description'],
         );
       }).toList();
     } on DioException catch (e) {
-      throw ErrorHandler.handle(e);
+      throw ErrorHandler.handleGeminiError(e);
     }
   }
 
@@ -62,30 +65,28 @@ class OpenAIAdapter implements BaseProviderAdapter {
       throw AuthenticationError(message: 'API key not configured.');
     }
 
+    if (profile.selectedModel == null || profile.selectedModel!.isEmpty) {
+      throw ValidationError(message: 'No model selected for Gemini.');
+    }
+
     final baseUrl = _normalizeBaseUrl(profile.baseUrl);
-    final formattedMessages = _formatMessages(messages, systemPrompt);
+    final formattedContents = _formatMessages(messages, systemPrompt);
 
     final requestBody = <String, dynamic>{
-      'model': profile.selectedModel,
-      'messages': formattedMessages,
-      'temperature': profile.temperature,
-      'max_tokens': profile.maxTokens,
-      'top_p': profile.topP,
-      'stream': true,
+      'contents': formattedContents,
+      'generationConfig': {
+        'temperature': profile.temperature,
+        'maxOutputTokens': profile.maxTokens,
+        'topP': profile.topP,
+      },
     };
-
-    if (tools != null &&
-        tools.isNotEmpty &&
-        _detectToolCalling(profile.selectedModel ?? '')) {
-      requestBody['tools'] = tools;
-    }
 
     try {
       final response = await _client.dio.post(
-        '$baseUrl/chat/completions',
+        '$baseUrl/models/${profile.selectedModel}:streamGenerateContent?key=$apiKey&alt=sse',
         data: requestBody,
         options: Options(
-          headers: _buildHeaders(apiKey, profile.customHeaders),
+          headers: {'Content-Type': 'application/json'},
           responseType: ResponseType.stream,
         ),
         cancelToken: cancelToken,
@@ -102,37 +103,32 @@ class OpenAIAdapter implements BaseProviderAdapter {
           final line = buffer.substring(0, newlineIndex).trim();
           buffer = buffer.substring(newlineIndex + 1);
 
-          if (line.isEmpty || !line.startsWith('data: ')) continue;
-
-          final data = line.substring(6);
-          if (data == '[DONE]') return;
+          if (line.isEmpty) continue;
 
           try {
-            final json = jsonDecode(data);
-            final delta = json['choices']?[0]?['delta'];
-            if (delta != null) {
-              final content = delta['content'];
+            final json = jsonDecode(line);
+            final candidate = json['candidates']?[0];
+            if (candidate != null) {
+              final content = candidate['content'];
               if (content != null) {
-                yield content;
-              }
-              final toolCalls = delta['tool_calls'];
-              if (toolCalls != null) {
-                for (final tc in toolCalls) {
-                  final fn = tc['function'];
-                  if (fn != null && fn['arguments'] != null) {
-                    yield fn['arguments'] as String;
+                final parts = content['parts'] as List?;
+                if (parts != null) {
+                  for (final part in parts) {
+                    if (part['text'] != null) {
+                      yield part['text'] as String;
+                    }
                   }
                 }
               }
             }
           } catch (e) {
-            debugPrint('SSE parse error: $e');
+            debugPrint('Gemini SSE parse error: $e');
           }
         }
       }
     } on DioException catch (e) {
       if (e.type == DioExceptionType.cancel) return;
-      throw ErrorHandler.handle(e);
+      throw ErrorHandler.handleGeminiError(e);
     }
   }
 
@@ -150,34 +146,50 @@ class OpenAIAdapter implements BaseProviderAdapter {
       throw AuthenticationError(message: 'API key not configured.');
     }
 
+    if (profile.selectedModel == null || profile.selectedModel!.isEmpty) {
+      throw ValidationError(message: 'No model selected for Gemini.');
+    }
+
     final baseUrl = _normalizeBaseUrl(profile.baseUrl);
-    final formattedMessages = _formatMessages(messages, systemPrompt);
+    final formattedContents = _formatMessages(messages, systemPrompt);
 
     final requestBody = <String, dynamic>{
-      'model': profile.selectedModel,
-      'messages': formattedMessages,
-      'temperature': profile.temperature,
-      'max_tokens': profile.maxTokens,
-      'top_p': profile.topP,
+      'contents': formattedContents,
+      'generationConfig': {
+        'temperature': profile.temperature,
+        'maxOutputTokens': profile.maxTokens,
+        'topP': profile.topP,
+      },
     };
-
-    if (tools != null &&
-        tools.isNotEmpty &&
-        _detectToolCalling(profile.selectedModel ?? '')) {
-      requestBody['tools'] = tools;
-    }
 
     try {
       final response = await _client.post(
-        '$baseUrl/chat/completions',
+        '$baseUrl/models/${profile.selectedModel}:generateContent?key=$apiKey',
         data: requestBody,
-        headers: _buildHeaders(apiKey, profile.customHeaders),
+        headers: {'Content-Type': 'application/json'},
         cancelToken: cancelToken,
       );
 
-      return response.data['choices']?[0]?['message']?['content'] ?? '';
+      final candidates = response.data['candidates'] as List?;
+      if (candidates == null || candidates.isEmpty) {
+        return '';
+      }
+
+      final content = candidates[0]['content'];
+      if (content == null) return '';
+
+      final parts = content['parts'] as List?;
+      if (parts == null || parts.isEmpty) return '';
+
+      final buffer = StringBuffer();
+      for (final part in parts) {
+        if (part['text'] != null) {
+          buffer.write(part['text']);
+        }
+      }
+      return buffer.toString();
     } on DioException catch (e) {
-      throw ErrorHandler.handle(e);
+      throw ErrorHandler.handleGeminiError(e);
     }
   }
 
@@ -226,42 +238,53 @@ class OpenAIAdapter implements BaseProviderAdapter {
     List<Map<String, dynamic>> messages,
     String? systemPrompt,
   ) {
-    final formatted = <Map<String, dynamic>>[];
-
-    if (systemPrompt != null && systemPrompt.isNotEmpty) {
-      formatted.add({
-        'role': 'system',
-        'content': systemPrompt,
-      });
-    }
+    final contents = <Map<String, dynamic>>[];
 
     for (final message in messages) {
       final role = message['role'];
-      if (role == 'tool') {
-        formatted.add({
-          'role': 'tool',
-          'content': message['content'] ?? '',
-          'tool_call_id': message['tool_call_id'] ?? '',
-        });
+      String geminiRole;
+      if (role == 'user') {
+        geminiRole = 'user';
+      } else if (role == 'assistant' || role == 'model') {
+        geminiRole = 'model';
       } else {
-        formatted.add({
-          'role': role,
-          'content': message['content'],
+        geminiRole = 'user';
+      }
+
+      final content = message['content'];
+      if (content != null && content.isNotEmpty) {
+        contents.add({
+          'role': geminiRole,
+          'parts': [{'text': content}],
         });
       }
     }
 
-    return formatted;
+    return contents;
+  }
+
+  int? _extractContextLength(Map<String, dynamic> model) {
+    final inputTokenLimit = model['inputTokenLimit'];
+    if (inputTokenLimit != null) {
+      return inputTokenLimit as int;
+    }
+    return null;
   }
 
   bool _detectVision(String modelId) {
-    final visionKeywords = ['vision', 'gpt-4o', 'gpt-4-turbo', 'claude-3'];
-    return visionKeywords.any((k) => modelId.toLowerCase().contains(k));
+    final visionModels = ['vision', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    return visionModels.any((m) => modelId.toLowerCase().contains(m));
+  }
+
+  bool _detectStreaming(Map<String, dynamic> model) {
+    final methods = model['methods'] as List?;
+    if (methods == null) return true;
+    return methods.any((m) => m['name'] == 'streamGenerateContent');
   }
 
   bool _detectToolCalling(String modelId) {
-    final toolKeywords = ['gpt-4', 'claude-3', 'gemini'];
-    return toolKeywords.any((k) => modelId.toLowerCase().contains(k));
+    final toolModels = ['gemini-1.5-pro'];
+    return toolModels.any((m) => modelId.toLowerCase().contains(m));
   }
 
   String _normalizeBaseUrl(String baseUrl) {
@@ -270,24 +293,6 @@ class OpenAIAdapter implements BaseProviderAdapter {
       url = url.substring(0, url.length - 1);
     }
     return url;
-  }
-
-  Map<String, String> _buildHeaders(
-    String apiKey,
-    Map<String, String> customHeaders,
-  ) {
-    final headers = <String, String>{
-      'Authorization': 'Bearer $apiKey',
-      'Content-Type': 'application/json',
-    };
-
-    for (final entry in customHeaders.entries) {
-      if (entry.key != 'Authorization' && entry.key != 'Content-Type') {
-        headers[entry.key] = entry.value;
-      }
-    }
-
-    return headers;
   }
 
   @override

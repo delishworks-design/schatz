@@ -583,13 +583,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Handle voice recording
   }
 
-  void _handleModelChanged(String model) {
+  void _handleModelChanged(String model) async {
     final oldProviderId = _activeProvider?.id;
     final provider = _providerService.findProviderForModel(model);
     if (provider != null) {
       final newProvider = provider.copyWith(selectedModel: model);
-      setState(() => _activeProvider = newProvider);
-
+      await _providerService.saveProfile(newProvider);
       if (oldProviderId != provider.id && _conversation != null) {
         _contextManager.onModelSwitch(
           conversationId: _conversation!.id,
@@ -598,6 +597,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           messages: _messages,
         );
       }
+      setState(() => _activeProvider = newProvider);
     }
   }
 

@@ -142,11 +142,14 @@ class _ProviderManagerScreenState extends State<ProviderManagerScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          profile.displayName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
+                        Flexible(
+                          child: Text(
+                            profile.displayName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (isActive) ...[
@@ -182,9 +185,15 @@ class _ProviderManagerScreenState extends State<ProviderManagerScreen> {
                 ),
               ),
               IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () => _editProvider(profile),
+                tooltip: 'Edit provider',
+              ),
+              IconButton(
                 icon: const Icon(Icons.delete_outline,
                     color: AppTheme.errorColor),
                 onPressed: () => _deleteProvider(profile),
+                tooltip: 'Delete provider',
               ),
             ],
           ),

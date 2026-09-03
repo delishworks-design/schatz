@@ -3,6 +3,7 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/models/provider_profile.dart';
 import '../../core/security/secure_storage.dart';
 import '../../providers/services/provider_service.dart';
+import '../../core/storage/storage_keys.dart';
 
 class ProviderEditorScreen extends StatefulWidget {
   final String? providerId;
@@ -23,50 +24,51 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
   String? _selectedModel;
   double _temperature = 0.7;
   int _maxTokens = 4096;
+  double _topP = 1.0;
   bool _streamingEnabled = true;
-  List<String> _availableModels = [];
+  bool _visionEnabled = false;
+  bool _toolCallingEnabled = false;
+  List<ProviderModel> _availableModels = [];
   bool _isLoadingModels = false;
+  String? _currentProfileId;
+  String? _currentApiKeyRef;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    if (widget.providerId != null) {
-      _loadProvider();
-    }
+    _loadProvider();
   }
 
-  void _loadProvider() async {
-    final profiles = await ProviderService().getProfiles();
-    if (!mounted) return;
-    final match = profiles.where((p) => p.id == widget.providerId).toList();
-    if (match.isNotEmpty) {
-      final profile = match.first;
-      setState(() {
-        _nameController.text = profile.displayName;
-        _urlController.text = profile.baseUrl;
-        _selectedType = profile.type;
-        _selectedModel = profile.selectedModel;
-        _temperature = profile.temperature;
-        _maxTokens = profile.maxTokens;
-        _streamingEnabled = profile.streamingEnabled;
-      });
-    } else if (profiles.isNotEmpty) {
-      final profile = profiles.first;
-      setState(() {
-        _nameController.text = profile.displayName;
-        _urlController.text = profile.baseUrl;
-        _selectedType = profile.type;
-        _selectedModel = profile.selectedModel;
-        _temperature = profile.temperature;
-        _maxTokens = profile.maxTokens;
-        _streamingEnabled = profile.streamingEnabled;
-      });
-    } else {
-      setState(() {
-        _nameController.text = 'My Provider';
-        _urlController.text = 'https://api.openai.com/v1';
-      });
+  Future<void> _loadProvider() async {
+    if (widget.providerId != null) {
+      final profiles = await ProviderService().getProfiles();
+      if (!mounted) return;
+      final match = profiles.where((p) => p.id == widget.providerId).toList();
+      if (match.isNotEmpty) {
+        final profile = match.first;
+        _populateFromProfile(profile);
+      }
     }
+    setState(() => _isLoading = false);
+  }
+
+  void _populateFromProfile(ProviderProfile profile) {
+    setState(() {
+      _currentProfileId = profile.id;
+      _currentApiKeyRef = profile.apiKeyReference;
+      _nameController.text = profile.displayName;
+      _urlController.text = profile.baseUrl;
+      _selectedType = profile.type;
+      _selectedModel = profile.selectedModel;
+      _temperature = profile.temperature;
+      _maxTokens = profile.maxTokens;
+      _topP = profile.topP;
+      _streamingEnabled = profile.streamingEnabled;
+      _visionEnabled = profile.visionEnabled;
+      _toolCallingEnabled = profile.toolCallingEnabled;
+      _availableModels = profile.availableModels;
+    });
   }
 
   @override
@@ -79,11 +81,17 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppTheme.backgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title:
-            Text(widget.providerId != null ? 'Edit Provider' : 'Add Provider'),
+        title: Text(_currentProfileId != null ? 'Edit Provider' : 'Add Provider'),
         actions: [
           TextButton(
             onPressed: _save,
@@ -151,36 +159,53 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _apiKeyController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'API Key',
                   hintText: 'sk-...',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
+                  helperText: _currentProfileId != null
+                      ? 'Leave empty to keep existing key'
+                      : 'Enter API key for this provider',
                 ),
                 obscureText: true,
               ),
             ]),
             _buildSection('Model', [
               DropdownButtonFormField<String>(
-                value: _selectedModel,
+                value: _availableModels.any((m) => m.id == _selectedModel)
+                    ? _selectedModel
+                    : null,
                 decoration: const InputDecoration(
                   labelText: 'Model',
                   border: OutlineInputBorder(),
                 ),
-                items: _availableModels.map((model) {
-                  return DropdownMenuItem(
-                    value: model,
-                    child: Text(model),
-                  );
-                }).toList(),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('Select a model'),
+                  ),
+                  ..._availableModels.map((model) {
+                    return DropdownMenuItem(
+                      value: model.id,
+                      child: Text(model.name),
+                    );
+                  }),
+                ],
                 onChanged: (value) {
                   setState(() => _selectedModel = value);
                 },
               ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
-                onPressed: _fetchModels,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Fetch Available Models'),
+                onPressed: _isLoadingModels ? null : _fetchModels,
+                icon: _isLoadingModels
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh),
+                label: Text(_isLoadingModels ? 'Fetching...' : 'Fetch Available Models'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
@@ -224,12 +249,40 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
                   Text(_maxTokens.toString()),
                 ],
               ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Text('Top P: '),
+                  Expanded(
+                    child: Slider(
+                      value: _topP,
+                      min: 0.0,
+                      max: 1.0,
+                      divisions: 10,
+                      label: _topP.toStringAsFixed(1),
+                      onChanged: (value) {
+                        setState(() => _topP = value);
+                      },
+                    ),
+                  ),
+                  Text(_topP.toStringAsFixed(1)),
+                ],
+              ),
               SwitchListTile(
                 title: const Text('Streaming'),
                 subtitle: const Text('Enable real-time streaming'),
                 value: _streamingEnabled,
                 onChanged: (value) {
                   setState(() => _streamingEnabled = value);
+                },
+                thumbColor: WidgetStateProperty.all(AppTheme.primaryColor),
+              ),
+              SwitchListTile(
+                title: const Text('Vision'),
+                subtitle: const Text('Enable image analysis'),
+                value: _visionEnabled,
+                onChanged: (value) {
+                  setState(() => _visionEnabled = value);
                 },
                 thumbColor: WidgetStateProperty.all(AppTheme.primaryColor),
               ),
@@ -276,8 +329,7 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
         _urlController.text = 'https://api.openai.com/v1';
         break;
       case ProviderType.gemini:
-        _urlController.text =
-            'https://generativelanguage.googleapis.com/v1beta';
+        _urlController.text = 'https://generativelanguage.googleapis.com/v1beta';
         break;
       case ProviderType.groq:
         _urlController.text = 'https://api.groq.com/openai/v1';
@@ -297,7 +349,7 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
     }
   }
 
-  void _fetchModels() async {
+  Future<void> _fetchModels() async {
     if (_urlController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a base URL first')),
@@ -307,17 +359,23 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
 
     setState(() => _isLoadingModels = true);
 
-    final profile = ProviderProfile(
-      displayName: _nameController.text,
-      type: _selectedType,
-      baseUrl: _urlController.text,
-      apiKeyReference: _selectedType.name,
-    );
+    final profile = _buildProfileForTest();
+
+    String? tempApiKey;
+    if (_apiKeyController.text.isNotEmpty) {
+      tempApiKey = _apiKeyController.text;
+    }
 
     try {
-      final models = await ProviderService().listModels(profile);
+      final models = await ProviderService().listModels(
+        profile,
+        apiKeyOverride: tempApiKey,
+      );
       setState(() {
-        _availableModels = models.map((m) => m.id).toList();
+        _availableModels = models;
+        if (_selectedModel == null && models.isNotEmpty) {
+          _selectedModel = models.first.id;
+        }
         _isLoadingModels = false;
       });
 
@@ -338,24 +396,52 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
     }
   }
 
-  void _save() async {
+  ProviderProfile _buildProfileForTest() {
+    final profileId = _currentProfileId ?? 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    return ProviderProfile(
+      id: profileId,
+      displayName: _nameController.text,
+      type: _selectedType,
+      baseUrl: _urlController.text,
+      apiKeyReference: _currentApiKeyRef ?? profileId,
+      selectedModel: _selectedModel,
+      availableModels: _availableModels,
+      temperature: _temperature,
+      maxTokens: _maxTokens,
+      topP: _topP,
+      streamingEnabled: _streamingEnabled,
+      visionEnabled: _visionEnabled,
+      toolCallingEnabled: _toolCallingEnabled,
+    );
+  }
+
+  Future<void> _save() async {
     if (_formKey.currentState!.validate()) {
+      final profileId = _currentProfileId ?? 'profile_${DateTime.now().millisecondsSinceEpoch}';
+      final apiKeyRef = StorageKeys.apiKeyReference(profileId);
+
       final profile = ProviderProfile(
-        id: widget.providerId,
+        id: profileId,
         displayName: _nameController.text,
         type: _selectedType,
         baseUrl: _urlController.text,
-        apiKeyReference: _selectedType.name,
+        apiKeyReference: apiKeyRef,
         selectedModel: _selectedModel,
+        availableModels: _availableModels,
         temperature: _temperature,
         maxTokens: _maxTokens,
+        topP: _topP,
         streamingEnabled: _streamingEnabled,
+        visionEnabled: _visionEnabled,
+        toolCallingEnabled: _toolCallingEnabled,
       );
+
       await ProviderService().saveProfile(profile);
+
       if (_apiKeyController.text.isNotEmpty) {
-        await SecureStorage()
-            .writeApiKey(profile.apiKeyReference, _apiKeyController.text);
+        await SecureStorage().writeApiKey(apiKeyRef, _apiKeyController.text);
       }
+
       if (mounted) Navigator.pop(context);
     }
   }
@@ -365,21 +451,18 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
       const SnackBar(content: Text('Testing connection...')),
     );
 
-    final profile = ProviderProfile(
-      displayName: _nameController.text,
-      type: _selectedType,
-      baseUrl: _urlController.text,
-      apiKeyReference: _selectedType.name,
-      selectedModel: _selectedModel,
-    );
+    final profile = _buildProfileForTest();
 
+    String? tempApiKey;
     if (_apiKeyController.text.isNotEmpty) {
-      await SecureStorage()
-          .writeApiKey(profile.apiKeyReference, _apiKeyController.text);
+      tempApiKey = _apiKeyController.text;
     }
 
     try {
-      final result = await ProviderService().testConnection(profile);
+      final result = await ProviderService().testConnection(
+        profile,
+        apiKeyOverride: tempApiKey,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

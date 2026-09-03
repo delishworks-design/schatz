@@ -203,7 +203,16 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
     );
   }
 
-  void _selectModel(ProviderModel model) {
+  void _selectModel(ProviderModel model) async {
+    if (_selectedProviderFilter != null) {
+      final profiles = await _providerService.getProfiles();
+      final provider = profiles.where((p) => p.id == _selectedProviderFilter).firstOrNull;
+      if (provider != null) {
+        final updatedProvider = provider.copyWith(selectedModel: model.id);
+        await _providerService.saveProfile(updatedProvider);
+      }
+    }
+    if (!mounted) return;
     Navigator.pop(context, model);
   }
 }

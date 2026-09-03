@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../storage/storage_keys.dart';
 
 class SecureStorage {
   static final SecureStorage _instance = SecureStorage._();
@@ -66,7 +67,7 @@ class SecureStorage {
 
   Future<void> writeApiKey(String providerId, String apiKey) async {
     try {
-      await write('api_key_$providerId', apiKey);
+      await write(StorageKeys.apiKeyReference(providerId), apiKey);
     } catch (e) {
       debugPrint('SecureStorage writeApiKey error: $e');
       rethrow;
@@ -75,7 +76,7 @@ class SecureStorage {
 
   Future<String?> readApiKey(String providerId) async {
     try {
-      return await read('api_key_$providerId');
+      return await read(StorageKeys.apiKeyReference(providerId));
     } catch (e) {
       debugPrint('SecureStorage readApiKey error: $e');
       return null;
@@ -84,7 +85,7 @@ class SecureStorage {
 
   Future<void> deleteApiKey(String providerId) async {
     try {
-      await delete('api_key_$providerId');
+      await delete(StorageKeys.apiKeyReference(providerId));
     } catch (e) {
       debugPrint('SecureStorage deleteApiKey error: $e');
       rethrow;

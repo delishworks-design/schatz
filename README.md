@@ -7,6 +7,10 @@ Schatz is a free, open-source AI chat companion that supports multiple AI provid
 ## Features
 
 - **Multi-Provider Support**: OpenAI, Groq, Gemini, Mistral, Cerebras, OpenRouter, and custom OpenAI-compatible endpoints
+- **Provider Setup Wizard**: Guided onboarding with Skip option for new users
+- **Persistent Setup Banner**: Reminds users to complete provider setup when incomplete
+- **Native Gemini Adapter**: Direct Gemini API support with list/generate/stream
+- **Free/Starter Model Catalog**: Pre-configured free and starter models per provider
 - **Streaming Chat**: Real-time token streaming with stop generation
 - **Model Discovery**: Automatic model listing where supported
 - **Connection Testing**: Validate provider configurations
@@ -91,6 +95,17 @@ flutter build apk --release
 4. Enter your API key
 5. Select a model
 6. Test connection
+
+### Provider Onboarding
+
+New users are guided through a streamlined setup flow:
+
+1. **Welcome** - Brief intro to Schatz
+2. **Provider Selection** - Choose from available AI providers
+3. **API Key Entry** - Enter your API key (or skip for later)
+4. **Model Selection** - Choose from free/starter models
+
+Users can skip setup and configure later. A persistent banner in Home reminds users to complete setup when incomplete.
 
 ## Security
 

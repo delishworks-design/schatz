@@ -74,6 +74,21 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
     }
   }
 
+  Future<void> _saveScannedModels() async {
+    if (_selectedProvider == null || _models.isEmpty) return;
+
+    final updatedProfile = _selectedProvider!.copyWith(
+      availableModels: _models,
+    );
+
+    await _providerService.saveProfile(updatedProfile);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Saved ${_models.length} models to ${_selectedProvider!.displayName}')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -81,6 +96,12 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
       appBar: AppBar(
         title: const Text('Model Scanner'),
         actions: [
+          if (_models.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.save),
+              onPressed: _saveScannedModels,
+              tooltip: 'Save models to provider',
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _isScanning ? null : _scanModels,

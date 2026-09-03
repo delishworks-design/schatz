@@ -1,11 +1,11 @@
 class ShellEscaper {
   ShellEscaper._();
 
-  static final _shellMetacharRegex = RegExp(r'[`$;|&<>!#{}()\[\]\'"\\]');
+  static final _shellMetacharRegex = RegExp(r'[`$;|&<>!#{}()\[\]\\]');
 
   static String escapeShellArg(String input) {
     if (input.isEmpty) return "''";
-    if (!_shellMetacharRegex.hasMatch(input)) return input;
+    if (!_shellMetacharRegex.hasMatch(input) && !input.contains('"') && !input.contains("'")) return input;
     return "'${input.replaceAll("'", "'\\''")}'";
   }
 
@@ -18,7 +18,10 @@ class ShellEscaper {
   }
 
   static String sanitizePath(String input) {
-    final sanitized = input.replaceAll(RegExp(r'[`$;|&<>!#{}()\[\]\'"\\]'), '');
+    final sanitized = input
+        .replaceAll(_shellMetacharRegex, '')
+        .replaceAll('"', '')
+        .replaceAll("'", '');
     if (sanitized.contains('..')) return sanitized.replaceAll('..', '');
     return sanitized;
   }

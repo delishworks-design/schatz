@@ -41,9 +41,6 @@ dependencies:
   flutter_highlight: ^0.7.0
   highlight: ^0.7.0
   
-  # Audio
-  record: ^5.0.4
-  
   # TTS
   flutter_tts: ^3.8.3
   
@@ -80,9 +77,6 @@ dependencies:
   
   # Icons
   cupertino_icons: ^1.0.6
-  
-  # PDF
-  pdf_text: ^0.5.0
   
   # Animation
   shimmer: ^3.0.0

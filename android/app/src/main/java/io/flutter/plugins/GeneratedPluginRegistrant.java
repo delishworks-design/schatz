@@ -61,11 +61,6 @@ public final class GeneratedPluginRegistrant {
       Log.e(TAG, "Error registering plugin jni_flutter, com.github.dart_lang.jni_flutter.JniFlutterPlugin", e);
     }
     try {
-      flutterEngine.getPlugins().add(new dev.aluc.pdf_text.PdfTextPlugin());
-    } catch (Exception e) {
-      Log.e(TAG, "Error registering plugin pdf_text, dev.aluc.pdf_text.PdfTextPlugin", e);
-    }
-    try {
       flutterEngine.getPlugins().add(new com.baseflow.permissionhandler.PermissionHandlerPlugin());
     } catch (Exception e) {
       Log.e(TAG, "Error registering plugin permission_handler_android, com.baseflow.permissionhandler.PermissionHandlerPlugin", e);

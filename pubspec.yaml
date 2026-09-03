@@ -81,9 +81,6 @@ dependencies:
   # Icons
   cupertino_icons: ^1.0.6
   
-  # PDF
-  pdf_text: ^0.5.0
-  
   # Animation
   shimmer: ^3.0.0
   

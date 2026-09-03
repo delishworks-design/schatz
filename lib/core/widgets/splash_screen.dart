@@ -40,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     if (onboardingComplete == 'true') {
-      Navigator.pushReplacementNamed(context, AppRouter.chat);
+      Navigator.pushReplacementNamed(context, AppRouter.home);
     } else {
       Navigator.pushReplacementNamed(context, AppRouter.onboarding);
     }

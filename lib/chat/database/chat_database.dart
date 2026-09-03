@@ -61,18 +61,14 @@ class ChatDatabase {
       final convFile = p.join(schatzDir, 'conversations.json');
       final msgFile = p.join(schatzDir, 'messages.json');
 
-      // NOTE: Non-atomic dual-file write. If the app crashes between writes,
-      // data may become inconsistent. A full atomic write (e.g. write-to-temp
-      // then rename) is complex on mobile; best-effort is acceptable here.
-      await _getFile(convFile).then((f) => f.writeAsString(
-            jsonEncode(_conversations.map((c) => c.toJson()).toList()),
-          ));
+      final convData =
+          jsonEncode(_conversations.map((c) => c.toJson()).toList());
+      final msgData = jsonEncode(_messages.map((key, value) {
+        return MapEntry(key, value.map((m) => m.toJson()).toList());
+      }));
 
-      await _getFile(msgFile).then((f) => f.writeAsString(
-            jsonEncode(_messages.map((key, value) {
-              return MapEntry(key, value.map((m) => m.toJson()).toList());
-            })),
-          ));
+      await io.File(convFile).writeAsString(convData);
+      await io.File(msgFile).writeAsString(msgData);
     } catch (e) {
       debugPrint('Failed to save data: $e');
     }

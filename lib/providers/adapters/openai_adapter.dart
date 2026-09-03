@@ -13,18 +13,24 @@ class OpenAIAdapter {
   final SecureStorage _storage = SecureStorage();
 
   Future<List<ProviderModel>> listModels(ProviderProfile profile) async {
+    if (profile.type == ProviderType.gemini) {
+      throw AuthenticationError(
+        message: 'Gemini requires its own API configuration. '
+            'Please use OpenAI-compatible endpoints or configure Gemini separately.',
+      );
+    }
+
     final apiKey = await _storage.readApiKey(profile.apiKeyReference);
     if (apiKey == null || apiKey.isEmpty) {
       throw AuthenticationError(message: 'API key not configured.');
     }
 
+    final baseUrl = _normalizeBaseUrl(profile.baseUrl);
+
     try {
       final response = await _client.get(
-        '${profile.baseUrl}/models',
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          ...profile.customHeaders,
-        },
+        '$baseUrl/models',
+        headers: _buildHeaders(apiKey, profile.customHeaders),
       );
 
       final data = response.data;
@@ -54,11 +60,19 @@ class OpenAIAdapter {
     CancelToken? cancelToken,
     List<Map<String, dynamic>>? tools,
   }) async* {
+    if (profile.type == ProviderType.gemini) {
+      throw AuthenticationError(
+        message: 'Gemini requires its own API configuration. '
+            'Please use OpenAI-compatible endpoints or configure Gemini separately.',
+      );
+    }
+
     final apiKey = await _storage.readApiKey(profile.apiKeyReference);
     if (apiKey == null || apiKey.isEmpty) {
       throw AuthenticationError(message: 'API key not configured.');
     }
 
+    final baseUrl = _normalizeBaseUrl(profile.baseUrl);
     final formattedMessages = _formatMessages(messages, systemPrompt);
 
     final requestBody = <String, dynamic>{
@@ -78,14 +92,10 @@ class OpenAIAdapter {
 
     try {
       final response = await _client.dio.post(
-        '${profile.baseUrl}/chat/completions',
+        '$baseUrl/chat/completions',
         data: requestBody,
         options: Options(
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-            ...profile.customHeaders,
-          },
+          headers: _buildHeaders(apiKey, profile.customHeaders),
           responseType: ResponseType.stream,
         ),
         cancelToken: cancelToken,
@@ -95,15 +105,16 @@ class OpenAIAdapter {
       String buffer = '';
 
       await for (final chunk in stream) {
-        buffer += utf8.decode(chunk);
-        final lines = buffer.split('\n');
-        buffer = lines.removeLast();
+        buffer += utf8.decode(chunk, allowMalformed: true);
 
-        for (final line in lines) {
-          final trimmed = line.trim();
-          if (trimmed.isEmpty || !trimmed.startsWith('data: ')) continue;
+        while (buffer.contains('\n')) {
+          final newlineIndex = buffer.indexOf('\n');
+          final line = buffer.substring(0, newlineIndex).trim();
+          buffer = buffer.substring(newlineIndex + 1);
 
-          final data = trimmed.substring(6);
+          if (line.isEmpty || !line.startsWith('data: ')) continue;
+
+          final data = line.substring(6);
           if (data == '[DONE]') return;
 
           try {
@@ -142,11 +153,19 @@ class OpenAIAdapter {
     CancelToken? cancelToken,
     List<Map<String, dynamic>>? tools,
   }) async {
+    if (profile.type == ProviderType.gemini) {
+      throw AuthenticationError(
+        message: 'Gemini requires its own API configuration. '
+            'Please use OpenAI-compatible endpoints or configure Gemini separately.',
+      );
+    }
+
     final apiKey = await _storage.readApiKey(profile.apiKeyReference);
     if (apiKey == null || apiKey.isEmpty) {
       throw AuthenticationError(message: 'API key not configured.');
     }
 
+    final baseUrl = _normalizeBaseUrl(profile.baseUrl);
     final formattedMessages = _formatMessages(messages, systemPrompt);
 
     final requestBody = <String, dynamic>{
@@ -165,13 +184,9 @@ class OpenAIAdapter {
 
     try {
       final response = await _client.post(
-        '${profile.baseUrl}/chat/completions',
+        '$baseUrl/chat/completions',
         data: requestBody,
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-          ...profile.customHeaders,
-        },
+        headers: _buildHeaders(apiKey, profile.customHeaders),
         cancelToken: cancelToken,
       );
 
@@ -261,6 +276,32 @@ class OpenAIAdapter {
   bool _detectToolCalling(String modelId) {
     final toolKeywords = ['gpt-4', 'claude-3', 'gemini'];
     return toolKeywords.any((k) => modelId.toLowerCase().contains(k));
+  }
+
+  String _normalizeBaseUrl(String baseUrl) {
+    var url = baseUrl.trim();
+    while (url.endsWith('/')) {
+      url = url.substring(0, url.length - 1);
+    }
+    return url;
+  }
+
+  Map<String, String> _buildHeaders(
+    String apiKey,
+    Map<String, String> customHeaders,
+  ) {
+    final headers = <String, String>{
+      'Authorization': 'Bearer $apiKey',
+      'Content-Type': 'application/json',
+    };
+
+    for (final entry in customHeaders.entries) {
+      if (entry.key != 'Authorization' && entry.key != 'Content-Type') {
+        headers[entry.key] = entry.value;
+      }
+    }
+
+    return headers;
   }
 
   void dispose() {

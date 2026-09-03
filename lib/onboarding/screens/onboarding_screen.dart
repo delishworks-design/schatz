@@ -431,7 +431,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await storage.write(StorageKeys.activeProviderId, profileId);
 
       if (_apiKeyController.text.isNotEmpty) {
-        await storage.writeApiKey(apiKeyRef, _apiKeyController.text);
+        await storage.writeApiKey(profileId, _apiKeyController.text);
       }
     }
 

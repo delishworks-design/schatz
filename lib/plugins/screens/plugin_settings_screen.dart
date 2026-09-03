@@ -29,7 +29,7 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
   Future<void> _loadPlugin() async {
     final plugins = await _pluginService.getInstalledPlugins();
     final plugin = plugins.where((p) => p.id == widget.pluginId).firstOrNull;
-    
+
     if (!mounted) return;
     if (plugin != null) {
       setState(() {
@@ -45,8 +45,10 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
   void _initControllers() {
     final settings = _getSettingsForPlugin();
     for (final setting in settings) {
-      final value = _plugin?.settings[setting['key']] ?? setting['defaultValue'] ?? '';
-      _controllers[setting['key']] = TextEditingController(text: value.toString());
+      final value =
+          _plugin?.settings[setting['key']] ?? setting['defaultValue'] ?? '';
+      _controllers[setting['key']] =
+          TextEditingController(text: value.toString());
       if (setting['type'] == 'password') {
         _obscureFields[setting['key']] = true;
       }
@@ -57,51 +59,141 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
     switch (widget.pluginId) {
       case 'github':
         return [
-          {'key': 'token', 'label': 'Personal Access Token', 'type': 'password', 'required': true},
-          {'key': 'default_owner', 'label': 'Default Owner', 'type': 'text', 'required': false},
+          {
+            'key': 'token',
+            'label': 'Personal Access Token',
+            'type': 'password',
+            'required': true
+          },
+          {
+            'key': 'default_owner',
+            'label': 'Default Owner',
+            'type': 'text',
+            'required': false
+          },
         ];
       case 'stripe':
         return [
-          {'key': 'secret_key', 'label': 'Secret Key', 'type': 'password', 'required': true},
-          {'key': 'publishable_key', 'label': 'Publishable Key', 'type': 'password', 'required': false},
+          {
+            'key': 'secret_key',
+            'label': 'Secret Key',
+            'type': 'password',
+            'required': true
+          },
+          {
+            'key': 'publishable_key',
+            'label': 'Publishable Key',
+            'type': 'password',
+            'required': false
+          },
         ];
       case 'supabase':
         return [
-          {'key': 'url', 'label': 'Project URL', 'type': 'text', 'required': true},
-          {'key': 'anon_key', 'label': 'Anonymous Key', 'type': 'password', 'required': true},
+          {
+            'key': 'url',
+            'label': 'Project URL',
+            'type': 'text',
+            'required': true
+          },
+          {
+            'key': 'anon_key',
+            'label': 'Anonymous Key',
+            'type': 'password',
+            'required': true
+          },
         ];
       case 'vercel':
         return [
-          {'key': 'token', 'label': 'API Token', 'type': 'password', 'required': true},
+          {
+            'key': 'token',
+            'label': 'API Token',
+            'type': 'password',
+            'required': true
+          },
         ];
       case 'netlify':
         return [
-          {'key': 'token', 'label': 'Personal Access Token', 'type': 'password', 'required': true},
+          {
+            'key': 'token',
+            'label': 'Personal Access Token',
+            'type': 'password',
+            'required': true
+          },
         ];
       case 'railway':
         return [
-          {'key': 'token', 'label': 'API Token', 'type': 'password', 'required': true},
+          {
+            'key': 'token',
+            'label': 'API Token',
+            'type': 'password',
+            'required': true
+          },
         ];
       case 'firebase':
         return [
-          {'key': 'project_id', 'label': 'Project ID', 'type': 'text', 'required': true},
-          {'key': 'service_account_key', 'label': 'Service Account Key (JSON)', 'type': 'password', 'required': true},
+          {
+            'key': 'project_id',
+            'label': 'Project ID',
+            'type': 'text',
+            'required': true
+          },
+          {
+            'key': 'service_account_key',
+            'label': 'Service Account Key (JSON)',
+            'type': 'password',
+            'required': true
+          },
         ];
       case 'cloudflare':
         return [
-          {'key': 'api_token', 'label': 'API Token', 'type': 'password', 'required': true},
-          {'key': 'zone_id', 'label': 'Zone ID', 'type': 'text', 'required': false},
+          {
+            'key': 'api_token',
+            'label': 'API Token',
+            'type': 'password',
+            'required': true
+          },
+          {
+            'key': 'zone_id',
+            'label': 'Zone ID',
+            'type': 'text',
+            'required': false
+          },
         ];
       case 'termux':
         return [
-          {'key': 'ssh_host', 'label': 'SSH Host', 'type': 'text', 'defaultValue': '127.0.0.1'},
-          {'key': 'ssh_port', 'label': 'SSH Port', 'type': 'number', 'defaultValue': '8022'},
-          {'key': 'ssh_username', 'label': 'SSH Username', 'type': 'text', 'defaultValue': 'u0_a361'},
-          {'key': 'ssh_password', 'label': 'SSH Password', 'type': 'password', 'defaultValue': '111'},
+          {
+            'key': 'ssh_host',
+            'label': 'SSH Host',
+            'type': 'text',
+            'defaultValue': '127.0.0.1'
+          },
+          {
+            'key': 'ssh_port',
+            'label': 'SSH Port',
+            'type': 'number',
+            'defaultValue': '8022'
+          },
+          {
+            'key': 'ssh_username',
+            'label': 'SSH Username',
+            'type': 'text',
+            'defaultValue': 'u0_a361'
+          },
+          {
+            'key': 'ssh_password',
+            'label': 'SSH Password',
+            'type': 'password',
+            'defaultValue': '111'
+          },
         ];
       default:
         return [
-          {'key': 'api_key', 'label': 'API Key', 'type': 'password', 'required': true},
+          {
+            'key': 'api_key',
+            'label': 'API Key',
+            'type': 'password',
+            'required': true
+          },
         ];
     }
   }
@@ -115,7 +207,7 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
     }
 
     await _pluginService.updatePluginSettings(_plugin!.id, settings);
-    
+
     if (widget.pluginId == 'termux') {
       final config = SSHConfig(
         host: _controllers['ssh_host']?.text ?? '127.0.0.1',
@@ -125,7 +217,7 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
       );
       await SSHService.instance.saveConfig(config);
     }
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Settings saved')),
@@ -190,11 +282,13 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_plugin?.name ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(_plugin?.name ?? '',
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
                   Text(
                     'v${_plugin?.version ?? ''}',
-                    style: const TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12),
+                    style: const TextStyle(
+                        color: AppTheme.textSecondaryColor, fontSize: 12),
                   ),
                 ],
               ),
@@ -217,7 +311,7 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
 
   Widget _buildSettingsSection() {
     final settings = _getSettingsForPlugin();
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -287,7 +381,8 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('SSH connection failed. Check host, port, and credentials.'),
+            content: Text(
+                'SSH connection failed. Check host, port, and credentials.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -318,13 +413,16 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
           TextField(
             controller: controller,
             obscureText: _obscureFields[key] ?? false,
-            keyboardType: type == 'number' ? TextInputType.number : TextInputType.text,
+            keyboardType:
+                type == 'number' ? TextInputType.number : TextInputType.text,
             decoration: InputDecoration(
               hintText: 'Enter ${label.toLowerCase()}',
               suffixIcon: type == 'password'
                   ? IconButton(
                       icon: Icon(
-                        _obscureFields[key] == true ? Icons.visibility : Icons.visibility_off,
+                        _obscureFields[key] == true
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                         color: AppTheme.textSecondaryColor,
                       ),
                       onPressed: () {
@@ -358,14 +456,16 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
         Card(
           child: ListTile(
             leading: const Icon(Icons.delete, color: AppTheme.errorColor),
-            title: const Text('Uninstall Plugin', style: TextStyle(color: AppTheme.errorColor)),
+            title: const Text('Uninstall Plugin',
+                style: TextStyle(color: AppTheme.errorColor)),
             subtitle: const Text('Remove this plugin and all its data'),
             onTap: () async {
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (context) => AlertDialog(
                   title: const Text('Uninstall Plugin'),
-                  content: Text('Are you sure you want to uninstall ${_plugin?.name}?'),
+                  content: Text(
+                      'Are you sure you want to uninstall ${_plugin?.name}?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
@@ -373,7 +473,8 @@ class _PluginSettingsScreenState extends State<PluginSettingsScreen> {
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Uninstall', style: TextStyle(color: AppTheme.errorColor)),
+                      child: const Text('Uninstall',
+                          style: TextStyle(color: AppTheme.errorColor)),
                     ),
                   ],
                 ),

@@ -11,7 +11,7 @@ class ActivityStep {
   final DateTime timestamp;
   final Duration? duration;
   final String? details;
-  
+
   ActivityStep({
     required this.name,
     this.status = ActivityStepStatus.pending,
@@ -19,7 +19,7 @@ class ActivityStep {
     this.duration,
     this.details,
   }) : timestamp = timestamp ?? DateTime.now();
-  
+
   ActivityStep copyWith({
     ActivityStepStatus? status,
     Duration? duration,
@@ -33,7 +33,7 @@ class ActivityStep {
       details: details ?? this.details,
     );
   }
-  
+
   String get statusIcon {
     switch (status) {
       case ActivityStepStatus.pending:
@@ -46,7 +46,7 @@ class ActivityStep {
         return '✗';
     }
   }
-  
+
   String get durationText {
     if (duration == null) return '';
     if (duration!.inMilliseconds < 1000) {

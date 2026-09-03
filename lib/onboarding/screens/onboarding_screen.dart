@@ -6,7 +6,7 @@ import '../../core/security/secure_storage.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
-  
+
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
@@ -16,14 +16,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _currentPage = 0;
   String? _selectedProvider;
   final _apiKeyController = TextEditingController();
-  
+
   @override
   void dispose() {
     _pageController.dispose();
     _apiKeyController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,7 +50,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     );
   }
-  
+
   Widget _buildWelcomePage() {
     return Padding(
       padding: const EdgeInsets.all(32),
@@ -74,8 +74,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Text(
             'Welcome to Schatz',
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-              color: AppTheme.primaryColor,
-            ),
+                  color: AppTheme.primaryColor,
+                ),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -90,7 +90,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     );
   }
-  
+
   Widget _buildProviderPage() {
     return Padding(
       padding: const EdgeInsets.all(32),
@@ -130,12 +130,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                       child: Icon(
                         _getProviderIcon(template.type),
-                        color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondaryColor,
+                        color: isSelected
+                            ? AppTheme.primaryColor
+                            : AppTheme.textSecondaryColor,
                       ),
                     ),
                     title: Text(template.displayName),
                     trailing: isSelected
-                        ? const Icon(Icons.check_circle, color: AppTheme.primaryColor)
+                        ? const Icon(Icons.check_circle,
+                            color: AppTheme.primaryColor)
                         : null,
                     onTap: () {
                       setState(() => _selectedProvider = template.id);
@@ -149,7 +152,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     );
   }
-  
+
   Widget _buildApiKeyPage() {
     return Padding(
       padding: const EdgeInsets.all(32),
@@ -186,7 +189,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     );
   }
-  
+
   Widget _buildBottomBar() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -213,7 +216,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     );
   }
-  
+
   Widget _buildDot(int index) {
     return Container(
       width: 8,
@@ -227,29 +230,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     );
   }
-  
+
   void _nextPage() {
     _pageController.nextPage(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
   }
-  
+
   void _completeOnboarding() async {
     final storage = SecureStorage();
     await storage.write('onboarding_complete', 'true');
-    
+
     if (_selectedProvider != null) {
       await storage.write('selected_provider', _selectedProvider!);
     }
-    
+
     if (_apiKeyController.text.isNotEmpty) {
-      await storage.writeApiKey(_selectedProvider ?? 'openrouter', _apiKeyController.text);
+      await storage.writeApiKey(
+          _selectedProvider ?? 'openrouter', _apiKeyController.text);
     }
-    
+
     Navigator.pushReplacementNamed(context, AppRouter.home);
   }
-  
+
   IconData _getProviderIcon(dynamic type) {
     return Icons.smart_toy;
   }

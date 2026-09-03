@@ -5,7 +5,7 @@ class ToolResult {
   final String? error;
   final String? toolId;
   final Duration? executionTime;
-  
+
   const ToolResult({
     required this.success,
     required this.content,
@@ -14,8 +14,9 @@ class ToolResult {
     this.toolId,
     this.executionTime,
   });
-  
-  factory ToolResult.success(String content, {Map<String, dynamic>? data, String? toolId, Duration? executionTime}) {
+
+  factory ToolResult.success(String content,
+      {Map<String, dynamic>? data, String? toolId, Duration? executionTime}) {
     return ToolResult(
       success: true,
       content: content,
@@ -24,7 +25,7 @@ class ToolResult {
       executionTime: executionTime,
     );
   }
-  
+
   factory ToolResult.failure(String error, {String? toolId}) {
     return ToolResult(
       success: false,
@@ -33,7 +34,7 @@ class ToolResult {
       toolId: toolId,
     );
   }
-  
+
   String get executionTimeText {
     if (executionTime == null) return '';
     if (executionTime!.inMilliseconds < 1000) {
@@ -41,16 +42,16 @@ class ToolResult {
     }
     return '${(executionTime!.inMilliseconds / 1000).toStringAsFixed(1)}s';
   }
-  
+
   Map<String, dynamic> toJson() => {
-    'success': success,
-    'content': content,
-    'data': data,
-    'error': error,
-    'toolId': toolId,
-    'executionTimeMs': executionTime?.inMilliseconds,
-  };
-  
+        'success': success,
+        'content': content,
+        'data': data,
+        'error': error,
+        'toolId': toolId,
+        'executionTimeMs': executionTime?.inMilliseconds,
+      };
+
   factory ToolResult.fromJson(Map<String, dynamic> json) {
     return ToolResult(
       success: json['success'] ?? false,
@@ -58,7 +59,7 @@ class ToolResult {
       data: json['data'],
       error: json['error'],
       toolId: json['toolId'],
-      executionTime: json['executionTimeMs'] != null 
+      executionTime: json['executionTimeMs'] != null
           ? Duration(milliseconds: json['executionTimeMs'])
           : null,
     );

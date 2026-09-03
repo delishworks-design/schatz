@@ -18,12 +18,12 @@ class PluginService {
   static final PluginService _instance = PluginService._();
   factory PluginService() => _instance;
   PluginService._();
-  
+
   final SecureStorage _storage = SecureStorage();
   final ToolRegistry _toolRegistry = ToolRegistry();
   final ToolExecutorService _toolExecutor = ToolExecutorService();
   bool _initialized = false;
-  
+
   static final Map<String, void Function()> _pluginRegistrars = {
     'github': GitHubPlugin.register,
     'vercel': VercelPlugin.register,
@@ -47,11 +47,11 @@ class PluginService {
       }
     }
   }
-  
+
   Future<List<Plugin>> getInstalledPlugins() async {
     final data = await _storage.read('installed_plugins');
     if (data == null) return [];
-    
+
     try {
       final List<dynamic> jsonList = jsonDecode(data);
       return jsonList.map((j) => Plugin.fromJson(j)).toList();
@@ -59,58 +59,59 @@ class PluginService {
       return [];
     }
   }
-  
+
   Future<void> savePlugin(Plugin plugin) async {
     final plugins = await getInstalledPlugins();
     final index = plugins.indexWhere((p) => p.id == plugin.id);
-    
+
     if (index != -1) {
       plugins[index] = plugin;
     } else {
       plugins.add(plugin);
     }
-    
+
     await _storage.write(
       'installed_plugins',
       jsonEncode(plugins.map((p) => p.toJson()).toList()),
     );
   }
-  
+
   Future<void> uninstallPlugin(String pluginId) async {
     final plugins = await getInstalledPlugins();
     plugins.removeWhere((p) => p.id == pluginId);
-    
+
     await _storage.write(
       'installed_plugins',
       jsonEncode(plugins.map((p) => p.toJson()).toList()),
     );
-    
+
     _toolRegistry.unregisterPlugin(pluginId);
     _toolExecutor.unregisterExecutors(pluginId);
   }
-  
+
   Future<void> togglePlugin(String pluginId, bool enabled) async {
     final plugins = await getInstalledPlugins();
     final index = plugins.indexWhere((p) => p.id == pluginId);
-    
+
     if (index != -1) {
       plugins[index] = plugins[index].copyWith(enabled: enabled);
       await _storage.write(
         'installed_plugins',
         jsonEncode(plugins.map((p) => p.toJson()).toList()),
       );
-      
+
       if (!enabled) {
         _toolRegistry.unregisterPlugin(pluginId);
         _toolExecutor.unregisterExecutors(pluginId);
       }
     }
   }
-  
-  Future<void> updatePluginSettings(String pluginId, Map<String, dynamic> settings) async {
+
+  Future<void> updatePluginSettings(
+      String pluginId, Map<String, dynamic> settings) async {
     final plugins = await getInstalledPlugins();
     final index = plugins.indexWhere((p) => p.id == pluginId);
-    
+
     if (index != -1) {
       plugins[index] = plugins[index].copyWith(settings: settings);
       await _storage.write(
@@ -119,18 +120,22 @@ class PluginService {
       );
     }
   }
-  
+
   Future<List<Tool>> getEnabledTools() async {
     final installedPlugins = await getInstalledPlugins();
-    final enabledPluginIds = installedPlugins.where((p) => p.enabled).map((p) => p.id).toSet();
-    
-    return _toolRegistry.getAllTools().where((t) => enabledPluginIds.contains(t.pluginId)).toList();
+    final enabledPluginIds =
+        installedPlugins.where((p) => p.enabled).map((p) => p.id).toSet();
+
+    return _toolRegistry
+        .getAllTools()
+        .where((t) => enabledPluginIds.contains(t.pluginId))
+        .toList();
   }
-  
+
   List<Tool> getToolsForPlugin(String pluginId) {
     return _toolRegistry.getToolsForPlugin(pluginId);
   }
-  
+
   List<Tool> searchTools(String query) {
     return _toolRegistry.searchTools(query);
   }

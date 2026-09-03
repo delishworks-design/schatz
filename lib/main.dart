@@ -10,7 +10,7 @@ void main() {
 
 class SchatzApp extends StatelessWidget {
   const SchatzApp({super.key});
-  
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

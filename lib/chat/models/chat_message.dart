@@ -20,7 +20,7 @@ class ChatMessage {
   final int? inputTokens;
   final int? outputTokens;
   final String? toolCallId;
-  
+
   ChatMessage({
     String? id,
     required this.conversationId,
@@ -39,7 +39,7 @@ class ChatMessage {
     this.toolCallId,
   })  : id = id ?? const Uuid().v4(),
         createdAt = createdAt ?? DateTime.now();
-  
+
   bool get isUser => role == MessageRole.user;
   bool get isAssistant => role == MessageRole.assistant;
   bool get isSystem => role == MessageRole.system;
@@ -47,12 +47,12 @@ class ChatMessage {
   bool get isStreaming => status == MessageStatus.streaming;
   bool get hasError => status == MessageStatus.error;
   bool get hasAttachments => attachmentIds.isNotEmpty;
-  
+
   int get estimatedTokens {
     final words = content.split(RegExp(r'\s+'));
     return (words.length * 1.33).ceil();
   }
-  
+
   ChatMessage copyWith({
     String? content,
     MessageStatus? status,
@@ -79,7 +79,7 @@ class ChatMessage {
       toolCallId: toolCallId,
     );
   }
-  
+
   Map<String, dynamic> toApiFormat() {
     if (role == MessageRole.tool) {
       return {
@@ -93,25 +93,25 @@ class ChatMessage {
       'content': content,
     };
   }
-  
+
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'conversationId': conversationId,
-    'role': role.name,
-    'content': content,
-    'status': status.name,
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt?.toIso8601String(),
-    'modelId': modelId,
-    'providerId': providerId,
-    'metadata': metadata,
-    'attachmentIds': attachmentIds,
-    'errorMessage': errorMessage,
-    'inputTokens': inputTokens,
-    'outputTokens': outputTokens,
-    'toolCallId': toolCallId,
-  };
-  
+        'id': id,
+        'conversationId': conversationId,
+        'role': role.name,
+        'content': content,
+        'status': status.name,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
+        'modelId': modelId,
+        'providerId': providerId,
+        'metadata': metadata,
+        'attachmentIds': attachmentIds,
+        'errorMessage': errorMessage,
+        'inputTokens': inputTokens,
+        'outputTokens': outputTokens,
+        'toolCallId': toolCallId,
+      };
+
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
       id: json['id'],
@@ -125,8 +125,10 @@ class ChatMessage {
         (e) => e.name == json['status'],
         orElse: () => MessageStatus.sent,
       ),
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      createdAt:
+          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      updatedAt:
+          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
       modelId: json['modelId'],
       providerId: json['providerId'],
       metadata: json['metadata'],

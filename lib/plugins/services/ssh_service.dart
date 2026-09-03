@@ -32,18 +32,18 @@ class SSHConfig {
   });
 
   Map<String, dynamic> toJson() => {
-    'host': host,
-    'port': port,
-    'username': username,
-    'password': password,
-  };
+        'host': host,
+        'port': port,
+        'username': username,
+        'password': password,
+      };
 
   factory SSHConfig.fromJson(Map<String, dynamic> json) => SSHConfig(
-    host: json['host'] ?? '127.0.0.1',
-    port: json['port'] ?? 8022,
-    username: json['username'] ?? 'u0_a361',
-    password: json['password'] ?? '',
-  );
+        host: json['host'] ?? '127.0.0.1',
+        port: json['port'] ?? 8022,
+        username: json['username'] ?? 'u0_a361',
+        password: json['password'] ?? '',
+      );
 
   static const defaultConfig = SSHConfig(
     host: '127.0.0.1',
@@ -74,7 +74,7 @@ class SSHService {
     final port = int.tryParse(await storage.read('ssh_port') ?? '8022') ?? 8022;
     final username = await storage.read('ssh_username') ?? 'u0_a361';
     final password = await storage.read('ssh_password') ?? '';
-    
+
     return SSHConfig(
       host: host,
       port: port,
@@ -99,9 +99,9 @@ class SSHService {
     _isConnecting = true;
     try {
       await disconnect();
-      
+
       _config = config ?? await loadConfig();
-      
+
       final socket = await SSHSocket.connect(
         _config!.host,
         _config!.port,
@@ -116,7 +116,7 @@ class SSHService {
 
       _isConnected = true;
       _lastActivity = DateTime.now();
-      
+
       return true;
     } catch (e) {
       _isConnected = false;
@@ -149,37 +149,39 @@ class SSHService {
     }
 
     final stopwatch = Stopwatch()..start();
-    
+
     try {
       final session = await _client!.execute(command);
-      
+
       final stdoutBuffer = StringBuffer();
       final stderrBuffer = StringBuffer();
-      
+
       final stdoutSub = session.stdout.listen((data) {
         stdoutBuffer.write(String.fromCharCodes(data));
       });
-      
+
       final stderrSub = session.stderr.listen((data) {
         stderrBuffer.write(String.fromCharCodes(data));
       });
-      
+
       final effectiveTimeout = timeout ?? const Duration(seconds: 30);
       await session.done.timeout(
         effectiveTimeout,
         onTimeout: () async {
           await stdoutSub.cancel();
           await stderrSub.cancel();
-          try { session.close(); } catch (_) {}
+          try {
+            session.close();
+          } catch (_) {}
         },
       );
-      
+
       await stdoutSub.cancel();
       await stderrSub.cancel();
-      
+
       stopwatch.stop();
       _lastActivity = DateTime.now();
-      
+
       return SSHResult(
         exitCode: 0,
         stdout: stdoutBuffer.toString(),
@@ -188,7 +190,7 @@ class SSHService {
       );
     } catch (e) {
       stopwatch.stop();
-      
+
       if (e is TimeoutException) {
         return SSHResult(
           exitCode: -1,
@@ -197,9 +199,9 @@ class SSHService {
           duration: stopwatch.elapsed,
         );
       }
-      
+
       _isConnected = false;
-      
+
       return SSHResult(
         exitCode: -1,
         stdout: '',
@@ -209,7 +211,8 @@ class SSHService {
     }
   }
 
-  Future<SSHResult> executeWithRetry(String command, {Duration? timeout, int maxRetries = 2}) async {
+  Future<SSHResult> executeWithRetry(String command,
+      {Duration? timeout, int maxRetries = 2}) async {
     SSHResult? lastResult;
     for (int i = 0; i <= maxRetries; i++) {
       lastResult = await execute(command, timeout: timeout);
@@ -224,7 +227,8 @@ class SSHService {
   Future<bool> testConnection({SSHConfig? config}) async {
     try {
       await connect(config: config);
-      final result = await execute('echo "connection_test"', timeout: const Duration(seconds: 5));
+      final result = await execute('echo "connection_test"',
+          timeout: const Duration(seconds: 5));
       return result.isSuccess && result.stdout.contains('connection_test');
     } catch (_) {
       return false;

@@ -15,16 +15,19 @@ class PluginRouter {
   final ToolExecutorService _toolExecutor = ToolExecutorService();
   final PluginService _pluginService = PluginService();
 
-  Future<ToolResult> route(String toolFullName, Map<String, dynamic> params) async {
+  Future<ToolResult> route(
+      String toolFullName, Map<String, dynamic> params) async {
     final tool = _toolRegistry.getTool(toolFullName);
     if (tool == null) {
-      return ToolResult.failure('Tool not found: $toolFullName', toolId: toolFullName);
+      return ToolResult.failure('Tool not found: $toolFullName',
+          toolId: toolFullName);
     }
 
     final enabledTools = await _pluginService.getEnabledTools();
     final isEnabled = enabledTools.any((t) => t.fullName == toolFullName);
     if (!isEnabled) {
-      return ToolResult.failure('Tool is disabled: $toolFullName', toolId: toolFullName);
+      return ToolResult.failure('Tool is disabled: $toolFullName',
+          toolId: toolFullName);
     }
 
     if (tool.requiresAuth) {
@@ -45,7 +48,8 @@ class PluginRouter {
     return await _toolExecutor.execute(toolFullName, params);
   }
 
-  Future<List<ToolResult>> routeSequence(List<Map<String, dynamic>> toolCalls) async {
+  Future<List<ToolResult>> routeSequence(
+      List<Map<String, dynamic>> toolCalls) async {
     final results = <ToolResult>[];
     for (final call in toolCalls) {
       final toolName = call['tool'] as String? ?? '';
@@ -57,7 +61,8 @@ class PluginRouter {
     return results;
   }
 
-  Future<List<ToolResult>> routeParallel(List<Map<String, dynamic>> toolCalls) async {
+  Future<List<ToolResult>> routeParallel(
+      List<Map<String, dynamic>> toolCalls) async {
     final futures = toolCalls.map((call) {
       final toolName = call['tool'] as String? ?? '';
       final args = call['args'] as Map<String, dynamic>? ?? {};
@@ -99,8 +104,8 @@ class PluginRouter {
     if (plugin == null) return false;
 
     final settings = plugin.settings;
-    final hasToken = settings.values.any((v) =>
-        v is String && v.isNotEmpty && v != 'null');
+    final hasToken =
+        settings.values.any((v) => v is String && v.isNotEmpty && v != 'null');
     return hasToken;
   }
 

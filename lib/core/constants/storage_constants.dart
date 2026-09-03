@@ -1,12 +1,12 @@
 class StorageConstants {
   StorageConstants._();
-  
+
   static const String apiKeyPrefix = 'api_key_';
   static const String settingsPrefix = 'settings_';
   static const String providerPrefix = 'provider_';
   static const String chatPrefix = 'chat_';
   static const String personaPrefix = 'persona_';
-  
+
   static const String activeProviderKey = 'active_provider_id';
   static const String onboardingCompleteKey = 'onboarding_complete';
   static const String themeModeKey = 'theme_mode';

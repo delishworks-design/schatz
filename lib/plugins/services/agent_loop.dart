@@ -40,7 +40,8 @@ class AgentLoop {
 
     try {
       final allMessages = List<ChatMessage>.from(messages);
-      final toolSchemas = _capabilityRegistry.getToolSchemasForProvider(provider.type.name);
+      final toolSchemas =
+          _capabilityRegistry.getToolSchemasForProvider(provider.type.name);
       final toolsSection = _capabilityRegistry.buildSystemPromptToolsSection();
 
       var effectiveSystemPrompt = systemPrompt ?? '';
@@ -94,7 +95,8 @@ class AgentLoop {
 
           final toolMessage = ChatMessage(
             id: 'tool_${DateTime.now().millisecondsSinceEpoch}',
-            conversationId: messages.isNotEmpty ? messages.first.conversationId : '',
+            conversationId:
+                messages.isNotEmpty ? messages.first.conversationId : '',
             role: MessageRole.tool,
             content: result.content,
             status: result.success ? MessageStatus.sent : MessageStatus.error,
@@ -104,7 +106,8 @@ class AgentLoop {
 
           final assistantMsg = ChatMessage(
             id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-            conversationId: messages.isNotEmpty ? messages.first.conversationId : '',
+            conversationId:
+                messages.isNotEmpty ? messages.first.conversationId : '',
             role: MessageRole.assistant,
             content: fullResponse,
             status: MessageStatus.sent,
@@ -152,12 +155,19 @@ class AgentEvent {
     this.toolResult,
   });
 
-  factory AgentEvent.thinking() => const AgentEvent._(type: AgentEventType.thinking);
-  factory AgentEvent.streaming(String chunk) => AgentEvent._(type: AgentEventType.streaming, content: chunk);
-  factory AgentEvent.toolStart(ToolCall call) => AgentEvent._(type: AgentEventType.toolStart, toolCall: call);
+  factory AgentEvent.thinking() =>
+      const AgentEvent._(type: AgentEventType.thinking);
+  factory AgentEvent.streaming(String chunk) =>
+      AgentEvent._(type: AgentEventType.streaming, content: chunk);
+  factory AgentEvent.toolStart(ToolCall call) =>
+      AgentEvent._(type: AgentEventType.toolStart, toolCall: call);
   factory AgentEvent.toolComplete(ToolCall call, ToolResult result) =>
-      AgentEvent._(type: AgentEventType.toolComplete, toolCall: call, toolResult: result);
-  factory AgentEvent.complete(String response) => AgentEvent._(type: AgentEventType.complete, content: response);
-  factory AgentEvent.error(String message) => AgentEvent._(type: AgentEventType.error, content: message);
+      AgentEvent._(
+          type: AgentEventType.toolComplete,
+          toolCall: call,
+          toolResult: result);
+  factory AgentEvent.complete(String response) =>
+      AgentEvent._(type: AgentEventType.complete, content: response);
+  factory AgentEvent.error(String message) =>
+      AgentEvent._(type: AgentEventType.error, content: message);
 }
-

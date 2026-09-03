@@ -132,7 +132,8 @@ class PluginCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        plugin.category.name[0].toUpperCase() + plugin.category.name.substring(1),
+        plugin.category.name[0].toUpperCase() +
+            plugin.category.name.substring(1),
         style: const TextStyle(
           color: AppTheme.primaryColor,
           fontSize: 10,

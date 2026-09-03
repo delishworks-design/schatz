@@ -103,7 +103,9 @@ class _ChatComposerState extends State<ChatComposer> {
               IconButton(
                 icon: Icon(
                   _hasText ? Icons.send : Icons.mic,
-                  color: _hasText ? AppTheme.primaryColor : AppTheme.textSecondaryColor,
+                  color: _hasText
+                      ? AppTheme.primaryColor
+                      : AppTheme.textSecondaryColor,
                 ),
                 onPressed: _hasText
                     ? () {

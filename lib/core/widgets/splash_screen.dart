@@ -5,7 +5,7 @@ import '../security/secure_storage.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
-  
+
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
@@ -14,7 +14,7 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
-  
+
   @override
   void initState() {
     super.initState();
@@ -26,32 +26,32 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
     _controller.forward();
-    
+
     _navigateAfterSplash();
   }
-  
+
   Future<void> _navigateAfterSplash() async {
     await Future.delayed(const Duration(milliseconds: 2500));
     if (!mounted) return;
-    
+
     final storage = SecureStorage();
     final onboardingComplete = await storage.read('onboarding_complete');
-    
+
     if (!mounted) return;
-    
+
     if (onboardingComplete == 'true') {
       Navigator.pushReplacementNamed(context, AppRouter.chat);
     } else {
       Navigator.pushReplacementNamed(context, AppRouter.onboarding);
     }
   }
-  
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -83,16 +83,16 @@ class _SplashScreenState extends State<SplashScreen>
               Text(
                 'Schatz',
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Your AI Companion',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textSecondaryColor,
-                ),
+                      color: AppTheme.textSecondaryColor,
+                    ),
               ),
             ],
           ),

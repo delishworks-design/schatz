@@ -2,7 +2,7 @@ import 'provider_profile.dart';
 
 class ProviderTemplates {
   ProviderTemplates._();
-  
+
   static final List<ProviderProfile> templates = [
     ProviderProfile(
       displayName: 'OpenRouter',
@@ -53,7 +53,7 @@ class ProviderTemplates {
       visionEnabled: true,
     ),
   ];
-  
+
   static ProviderProfile? getTemplate(String name) {
     try {
       return templates.firstWhere(

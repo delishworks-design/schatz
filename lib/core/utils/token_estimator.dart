@@ -4,7 +4,7 @@ class TokenEstimator {
     final words = text.split(RegExp(r'\s+'));
     return (words.length * 1.33).ceil();
   }
-  
+
   static int estimateMessages(List<Map<String, String>> messages) {
     int total = 0;
     for (final message in messages) {

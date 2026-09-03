@@ -4,7 +4,7 @@ import '../../core/routing/app_router.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
-  
+
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -22,7 +22,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.api,
               title: 'Manage Providers',
               subtitle: 'Add, edit, and configure AI providers',
-              onTap: () => Navigator.pushNamed(context, AppRouter.providerManager),
+              onTap: () =>
+                  Navigator.pushNamed(context, AppRouter.providerManager),
             ),
           ]),
           _buildSection('Generation', [
@@ -101,13 +102,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.extension,
               title: 'Plugin Manager',
               subtitle: 'Manage installed plugins and tools',
-              onTap: () => Navigator.pushNamed(context, AppRouter.pluginManager),
+              onTap: () =>
+                  Navigator.pushNamed(context, AppRouter.pluginManager),
             ),
             _buildTile(
               icon: Icons.store,
               title: 'Plugin Marketplace',
               subtitle: 'Browse and install new plugins',
-              onTap: () => Navigator.pushNamed(context, AppRouter.pluginMarketplace),
+              onTap: () =>
+                  Navigator.pushNamed(context, AppRouter.pluginMarketplace),
             ),
           ]),
           _buildSection('Backup', [
@@ -153,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-  
+
   Widget _buildSection(String title, List<Widget> children) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,7 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ],
     );
   }
-  
+
   Widget _buildTile({
     required IconData icon,
     required String title,
@@ -186,13 +189,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: Text(title),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12),
+        style:
+            const TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12),
       ),
-      trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondaryColor),
+      trailing:
+          const Icon(Icons.chevron_right, color: AppTheme.textSecondaryColor),
       onTap: onTap,
     );
   }
-  
+
   Widget _buildSwitch({
     required IconData icon,
     required String title,
@@ -205,7 +210,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: Text(title),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12),
+        style:
+            const TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12),
       ),
       value: value,
       onChanged: onChanged,

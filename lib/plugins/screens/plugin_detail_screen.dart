@@ -35,7 +35,8 @@ class _PluginDetailScreenState extends State<PluginDetailScreen> {
 
   Future<void> _loadPlugin() async {
     final installedPlugins = await _pluginService.getInstalledPlugins();
-    _plugin = installedPlugins.where((p) => p.id == widget.pluginId).firstOrNull;
+    _plugin =
+        installedPlugins.where((p) => p.id == widget.pluginId).firstOrNull;
     _isInstalled = _plugin != null;
 
     if (_isInstalled) {
@@ -52,68 +53,175 @@ class _PluginDetailScreenState extends State<PluginDetailScreen> {
   Plugin _getDefaultPlugin() {
     final plugins = {
       'github': Plugin(
-        id: 'github', name: 'GitHub', description: 'Interact with GitHub repositories, issues, and pull requests',
-        category: PluginCategory.development, version: '1.0.0', author: 'Schatz',
+        id: 'github',
+        name: 'GitHub',
+        description:
+            'Interact with GitHub repositories, issues, and pull requests',
+        category: PluginCategory.development,
+        version: '1.0.0',
+        author: 'Schatz',
       ),
       'vercel': Plugin(
-        id: 'vercel', name: 'Vercel', description: 'Deploy and manage Vercel projects and functions',
-        category: PluginCategory.deployment, version: '1.0.0', author: 'Schatz',
+        id: 'vercel',
+        name: 'Vercel',
+        description: 'Deploy and manage Vercel projects and functions',
+        category: PluginCategory.deployment,
+        version: '1.0.0',
+        author: 'Schatz',
       ),
       'supabase': Plugin(
-        id: 'supabase', name: 'Supabase', description: 'Manage Supabase database, auth, and storage',
-        category: PluginCategory.database, version: '1.0.0', author: 'Schatz',
+        id: 'supabase',
+        name: 'Supabase',
+        description: 'Manage Supabase database, auth, and storage',
+        category: PluginCategory.database,
+        version: '1.0.0',
+        author: 'Schatz',
       ),
       'netlify': Plugin(
-        id: 'netlify', name: 'Netlify', description: 'Deploy and manage Netlify sites',
-        category: PluginCategory.deployment, version: '1.0.0', author: 'Schatz',
+        id: 'netlify',
+        name: 'Netlify',
+        description: 'Deploy and manage Netlify sites',
+        category: PluginCategory.deployment,
+        version: '1.0.0',
+        author: 'Schatz',
       ),
       'railway': Plugin(
-        id: 'railway', name: 'Railway', description: 'Deploy and manage Railway projects',
-        category: PluginCategory.infrastructure, version: '1.0.0', author: 'Schatz',
+        id: 'railway',
+        name: 'Railway',
+        description: 'Deploy and manage Railway projects',
+        category: PluginCategory.infrastructure,
+        version: '1.0.0',
+        author: 'Schatz',
       ),
       'firebase': Plugin(
-        id: 'firebase', name: 'Firebase', description: 'Firebase services integration',
-        category: PluginCategory.backend, version: '1.0.0', author: 'Schatz',
+        id: 'firebase',
+        name: 'Firebase',
+        description: 'Firebase services integration',
+        category: PluginCategory.backend,
+        version: '1.0.0',
+        author: 'Schatz',
       ),
       'stripe': Plugin(
-        id: 'stripe', name: 'Stripe', description: 'Manage Stripe payments and customers',
-        category: PluginCategory.payment, version: '1.0.0', author: 'Schatz',
+        id: 'stripe',
+        name: 'Stripe',
+        description: 'Manage Stripe payments and customers',
+        category: PluginCategory.payment,
+        version: '1.0.0',
+        author: 'Schatz',
       ),
       'cloudflare': Plugin(
-        id: 'cloudflare', name: 'Cloudflare', description: 'Manage Cloudflare Workers and domains',
-        category: PluginCategory.infrastructure, version: '1.0.0', author: 'Schatz',
+        id: 'cloudflare',
+        name: 'Cloudflare',
+        description: 'Manage Cloudflare Workers and domains',
+        category: PluginCategory.infrastructure,
+        version: '1.0.0',
+        author: 'Schatz',
       ),
       'termux': Plugin(
-        id: 'termux', name: 'Termux', description: 'Execute commands in Termux environment',
-        category: PluginCategory.execution, version: '1.0.0', author: 'Schatz',
+        id: 'termux',
+        name: 'Termux',
+        description: 'Execute commands in Termux environment',
+        category: PluginCategory.execution,
+        version: '1.0.0',
+        author: 'Schatz',
       ),
     };
-    return plugins[widget.pluginId] ?? Plugin(
-      id: widget.pluginId, name: widget.pluginId, description: 'Plugin',
-      category: PluginCategory.development, version: '1.0.0', author: 'Schatz',
-    );
+    return plugins[widget.pluginId] ??
+        Plugin(
+          id: widget.pluginId,
+          name: widget.pluginId,
+          description: 'Plugin',
+          category: PluginCategory.development,
+          version: '1.0.0',
+          author: 'Schatz',
+        );
   }
 
   List<Tool> _getDefaultTools() {
     final toolsMap = {
       'github': [
-        Tool(id: 'read', name: 'Read Repository', description: 'Read repository details, files, or content', pluginId: 'github', type: ToolType.read),
-        Tool(id: 'search', name: 'Search Code', description: 'Search code across repositories', pluginId: 'github', type: ToolType.search),
-        Tool(id: 'issue.list', name: 'List Issues', description: 'List issues in a repository', pluginId: 'github', type: ToolType.read),
-        Tool(id: 'issue.create', name: 'Create Issue', description: 'Create a new issue', pluginId: 'github', type: ToolType.write),
-        Tool(id: 'pr.list', name: 'List Pull Requests', description: 'List pull requests', pluginId: 'github', type: ToolType.read),
-        Tool(id: 'pr.create', name: 'Create Pull Request', description: 'Create a new pull request', pluginId: 'github', type: ToolType.write),
-        Tool(id: 'deploy', name: 'Trigger Deployment', description: 'Trigger GitHub Actions deployment', pluginId: 'github', type: ToolType.execute),
+        Tool(
+            id: 'read',
+            name: 'Read Repository',
+            description: 'Read repository details, files, or content',
+            pluginId: 'github',
+            type: ToolType.read),
+        Tool(
+            id: 'search',
+            name: 'Search Code',
+            description: 'Search code across repositories',
+            pluginId: 'github',
+            type: ToolType.search),
+        Tool(
+            id: 'issue.list',
+            name: 'List Issues',
+            description: 'List issues in a repository',
+            pluginId: 'github',
+            type: ToolType.read),
+        Tool(
+            id: 'issue.create',
+            name: 'Create Issue',
+            description: 'Create a new issue',
+            pluginId: 'github',
+            type: ToolType.write),
+        Tool(
+            id: 'pr.list',
+            name: 'List Pull Requests',
+            description: 'List pull requests',
+            pluginId: 'github',
+            type: ToolType.read),
+        Tool(
+            id: 'pr.create',
+            name: 'Create Pull Request',
+            description: 'Create a new pull request',
+            pluginId: 'github',
+            type: ToolType.write),
+        Tool(
+            id: 'deploy',
+            name: 'Trigger Deployment',
+            description: 'Trigger GitHub Actions deployment',
+            pluginId: 'github',
+            type: ToolType.execute),
       ],
       'stripe': [
-        Tool(id: 'payment.list', name: 'List Payments', description: 'List recent payments', pluginId: 'stripe', type: ToolType.read),
-        Tool(id: 'customer.create', name: 'Create Customer', description: 'Create a new customer', pluginId: 'stripe', type: ToolType.write),
-        Tool(id: 'invoice.create', name: 'Create Invoice', description: 'Create an invoice', pluginId: 'stripe', type: ToolType.write),
+        Tool(
+            id: 'payment.list',
+            name: 'List Payments',
+            description: 'List recent payments',
+            pluginId: 'stripe',
+            type: ToolType.read),
+        Tool(
+            id: 'customer.create',
+            name: 'Create Customer',
+            description: 'Create a new customer',
+            pluginId: 'stripe',
+            type: ToolType.write),
+        Tool(
+            id: 'invoice.create',
+            name: 'Create Invoice',
+            description: 'Create an invoice',
+            pluginId: 'stripe',
+            type: ToolType.write),
       ],
       'supabase': [
-        Tool(id: 'query', name: 'Query Database', description: 'Execute SQL queries', pluginId: 'supabase', type: ToolType.read),
-        Tool(id: 'insert', name: 'Insert Data', description: 'Insert data into tables', pluginId: 'supabase', type: ToolType.write),
-        Tool(id: 'auth.signin', name: 'Sign In', description: 'Authenticate users', pluginId: 'supabase', type: ToolType.execute),
+        Tool(
+            id: 'query',
+            name: 'Query Database',
+            description: 'Execute SQL queries',
+            pluginId: 'supabase',
+            type: ToolType.read),
+        Tool(
+            id: 'insert',
+            name: 'Insert Data',
+            description: 'Insert data into tables',
+            pluginId: 'supabase',
+            type: ToolType.write),
+        Tool(
+            id: 'auth.signin',
+            name: 'Sign In',
+            description: 'Authenticate users',
+            pluginId: 'supabase',
+            type: ToolType.execute),
       ],
     };
     return toolsMap[widget.pluginId] ?? [];
@@ -123,9 +231,9 @@ class _PluginDetailScreenState extends State<PluginDetailScreen> {
     if (_plugin == null) return;
 
     setState(() => _isLoading = true);
-    
+
     await _pluginService.savePlugin(_plugin!.copyWith(enabled: true));
-    
+
     if (!mounted) return;
     setState(() {
       _isInstalled = true;
@@ -146,7 +254,8 @@ class _PluginDetailScreenState extends State<PluginDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Uninstall Plugin'),
-        content: Text('Remove ${_plugin!.name}? This will disable all its tools.'),
+        content:
+            Text('Remove ${_plugin!.name}? This will disable all its tools.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -154,7 +263,8 @@ class _PluginDetailScreenState extends State<PluginDetailScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Uninstall', style: TextStyle(color: AppTheme.errorColor)),
+            child: const Text('Uninstall',
+                style: TextStyle(color: AppTheme.errorColor)),
           ),
         ],
       ),
@@ -219,7 +329,8 @@ class _PluginDetailScreenState extends State<PluginDetailScreen> {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
-              Navigator.pushNamed(context, AppRouter.pluginSettings, arguments: {'pluginId': _plugin!.id});
+              Navigator.pushNamed(context, AppRouter.pluginSettings,
+                  arguments: {'pluginId': _plugin!.id});
             },
           ),
       ],
@@ -259,11 +370,16 @@ class _PluginDetailScreenState extends State<PluginDetailScreen> {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  _buildCategoryChip(_plugin?.category ?? PluginCategory.development),
+                  _buildCategoryChip(
+                      _plugin?.category ?? PluginCategory.development),
                   const SizedBox(width: 8),
-                  Text('v${_plugin?.version}', style: const TextStyle(color: AppTheme.textSecondaryColor)),
+                  Text('v${_plugin?.version}',
+                      style:
+                          const TextStyle(color: AppTheme.textSecondaryColor)),
                   const SizedBox(width: 8),
-                  Text('by ${_plugin?.author}', style: const TextStyle(color: AppTheme.textSecondaryColor)),
+                  Text('by ${_plugin?.author}',
+                      style:
+                          const TextStyle(color: AppTheme.textSecondaryColor)),
                 ],
               ),
             ],
@@ -272,7 +388,8 @@ class _PluginDetailScreenState extends State<PluginDetailScreen> {
         if (_isInstalled)
           ElevatedButton(
             onPressed: _uninstallPlugin,
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+            style:
+                ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
             child: const Text('Uninstall'),
           )
         else
@@ -295,7 +412,8 @@ class _PluginDetailScreenState extends State<PluginDetailScreen> {
         const SizedBox(height: 8),
         Text(
           _plugin?.description ?? '',
-          style: const TextStyle(color: AppTheme.textSecondaryColor, height: 1.5),
+          style:
+              const TextStyle(color: AppTheme.textSecondaryColor, height: 1.5),
         ),
       ],
     );
@@ -320,15 +438,16 @@ class _PluginDetailScreenState extends State<PluginDetailScreen> {
         ),
         const SizedBox(height: 12),
         ..._tools.map((tool) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: ToolCard(tool: tool, compact: true),
-        )),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: ToolCard(tool: tool, compact: true),
+            )),
       ],
     );
   }
 
   Widget _buildPermissions() {
-    if (_plugin?.requiredPermissions.isEmpty ?? true) return const SizedBox.shrink();
+    if (_plugin?.requiredPermissions.isEmpty ?? true)
+      return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

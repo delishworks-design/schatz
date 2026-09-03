@@ -8,7 +8,7 @@ import '../../providers/services/provider_service.dart';
 
 class ProviderManagerScreen extends StatefulWidget {
   const ProviderManagerScreen({super.key});
-  
+
   @override
   State<ProviderManagerScreen> createState() => _ProviderManagerScreenState();
 }
@@ -18,20 +18,20 @@ class _ProviderManagerScreenState extends State<ProviderManagerScreen> {
   List<ProviderProfile> _profiles = [];
   String? _activeProviderId;
   bool _isLoading = true;
-  
+
   @override
   void initState() {
     super.initState();
     _loadProfiles();
   }
-  
+
   Future<void> _loadProfiles() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
-    
+
     final storageProfiles = await ProviderService().getProfiles();
     final savedActiveId = await _storage.read('active_provider_id');
-    
+
     if (!mounted) return;
     if (storageProfiles.isNotEmpty) {
       setState(() {
@@ -46,11 +46,11 @@ class _ProviderManagerScreenState extends State<ProviderManagerScreen> {
         }
       });
     }
-    
+
     if (!mounted) return;
     setState(() => _isLoading = false);
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,7 +77,7 @@ class _ProviderManagerScreenState extends State<ProviderManagerScreen> {
             ),
     );
   }
-  
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -108,7 +108,7 @@ class _ProviderManagerScreenState extends State<ProviderManagerScreen> {
       ),
     );
   }
-  
+
   Widget _buildProviderCard(ProviderProfile profile, bool isActive) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -130,7 +130,9 @@ class _ProviderManagerScreenState extends State<ProviderManagerScreen> {
                 ),
                 child: Icon(
                   _getProviderIcon(profile.type),
-                  color: isActive ? AppTheme.primaryColor : AppTheme.textSecondaryColor,
+                  color: isActive
+                      ? AppTheme.primaryColor
+                      : AppTheme.textSecondaryColor,
                 ),
               ),
               const SizedBox(width: 12),
@@ -150,7 +152,8 @@ class _ProviderManagerScreenState extends State<ProviderManagerScreen> {
                         if (isActive) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: AppTheme.successColor.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(4),
@@ -179,7 +182,8 @@ class _ProviderManagerScreenState extends State<ProviderManagerScreen> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.delete_outline, color: AppTheme.errorColor),
+                icon: const Icon(Icons.delete_outline,
+                    color: AppTheme.errorColor),
                 onPressed: () => _deleteProvider(profile),
               ),
             ],
@@ -188,7 +192,7 @@ class _ProviderManagerScreenState extends State<ProviderManagerScreen> {
       ),
     );
   }
-  
+
   IconData _getProviderIcon(ProviderType type) {
     switch (type) {
       case ProviderType.openai:
@@ -207,17 +211,17 @@ class _ProviderManagerScreenState extends State<ProviderManagerScreen> {
         return Icons.settings_input_component;
     }
   }
-  
+
   void _addProvider() {
     Navigator.pushNamed(context, AppRouter.providerEditor);
   }
-  
+
   void _editProvider(ProviderProfile profile) {
     Navigator.pushNamed(context, AppRouter.providerEditor, arguments: {
       'providerId': profile.id,
     });
   }
-  
+
   void _toggleActiveProvider(ProviderProfile profile) async {
     setState(() {
       _activeProviderId = profile.id;
@@ -228,7 +232,7 @@ class _ProviderManagerScreenState extends State<ProviderManagerScreen> {
       SnackBar(content: Text('${profile.displayName} set as active provider')),
     );
   }
-  
+
   void _deleteProvider(ProviderProfile profile) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -242,12 +246,13 @@ class _ProviderManagerScreenState extends State<ProviderManagerScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: AppTheme.errorColor)),
+            child: const Text('Delete',
+                style: TextStyle(color: AppTheme.errorColor)),
           ),
         ],
       ),
     );
-    
+
     if (confirmed == true) {
       await ProviderService().deleteProfile(profile.id);
       if (!mounted) return;

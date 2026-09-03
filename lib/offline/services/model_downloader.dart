@@ -14,7 +14,7 @@ class DownloadedModel {
   final double ramRequired;
   final DateTime downloadedAt;
   final String filePath;
-  
+
   DownloadedModel({
     required this.id,
     required this.name,
@@ -25,18 +25,18 @@ class DownloadedModel {
     required this.downloadedAt,
     required this.filePath,
   });
-  
+
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'size': size,
-    'quantization': quantization,
-    'contextLength': contextLength,
-    'ramRequired': ramRequired,
-    'downloadedAt': downloadedAt.toIso8601String(),
-    'filePath': filePath,
-  };
-  
+        'id': id,
+        'name': name,
+        'size': size,
+        'quantization': quantization,
+        'contextLength': contextLength,
+        'ramRequired': ramRequired,
+        'downloadedAt': downloadedAt.toIso8601String(),
+        'filePath': filePath,
+      };
+
   factory DownloadedModel.fromJson(Map<String, dynamic> json) {
     return DownloadedModel(
       id: json['id'] ?? '',
@@ -45,8 +45,8 @@ class DownloadedModel {
       quantization: json['quantization'] ?? '',
       contextLength: json['contextLength'] ?? 2048,
       ramRequired: (json['ramRequired'] as num?)?.toDouble() ?? 2.0,
-      downloadedAt: json['downloadedAt'] != null 
-          ? DateTime.parse(json['downloadedAt']) 
+      downloadedAt: json['downloadedAt'] != null
+          ? DateTime.parse(json['downloadedAt'])
           : DateTime.now(),
       filePath: json['filePath'] ?? '',
     );
@@ -63,7 +63,7 @@ class AvailableModel {
   final double ramRequired;
   final String category;
   final String downloadUrl;
-  
+
   AvailableModel({
     required this.id,
     required this.name,
@@ -79,11 +79,11 @@ class AvailableModel {
 
 class ModelDownloader {
   final SecureStorage _storage = SecureStorage();
-  
+
   Future<List<DownloadedModel>> getDownloadedModels() async {
     final data = await _storage.read('downloaded_models');
     if (data == null) return [];
-    
+
     try {
       final List<dynamic> jsonList = jsonDecode(data);
       return jsonList.map((j) => DownloadedModel.fromJson(j)).toList();
@@ -91,7 +91,7 @@ class ModelDownloader {
       return [];
     }
   }
-  
+
   Future<List<AvailableModel>> getAvailableModels() async {
     return [
       AvailableModel(
@@ -184,23 +184,23 @@ class ModelDownloader {
       ),
     ];
   }
-  
+
   // TODO: Actual HTTP download requires http package or dio integration.
   // This currently creates the directory structure and metadata only.
   Future<void> downloadModel(AvailableModel model) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final modelsDir = Directory(p.join(dir.path, 'schatz', 'models'));
-      
+
       if (!await modelsDir.exists()) {
         await modelsDir.create(recursive: true);
       }
-      
+
       final modelDir = Directory(p.join(modelsDir.path, model.id));
       if (!await modelDir.exists()) {
         await modelDir.create(recursive: true);
       }
-      
+
       final downloadedModel = DownloadedModel(
         id: model.id,
         name: model.name,
@@ -211,16 +211,17 @@ class ModelDownloader {
         downloadedAt: DateTime.now(),
         filePath: p.join(modelDir.path, '${model.id}.gguf'),
       );
-      
+
       await _saveDownloadedModel(downloadedModel);
     } catch (e) {
       debugPrint('Failed to download model: $e');
     }
   }
-  
+
   Future<void> deleteModel(String modelId) async {
     final models = await getDownloadedModels();
-    final model = models.firstWhere((m) => m.id == modelId, orElse: () => models.first);
+    final model =
+        models.firstWhere((m) => m.id == modelId, orElse: () => models.first);
     try {
       final file = File(model.filePath);
       if (await file.exists()) {
@@ -230,12 +231,14 @@ class ModelDownloader {
       debugPrint('Failed to delete model file: $e');
     }
     models.removeWhere((m) => m.id == modelId);
-    await _storage.write('downloaded_models', jsonEncode(models.map((m) => m.toJson()).toList()));
+    await _storage.write('downloaded_models',
+        jsonEncode(models.map((m) => m.toJson()).toList()));
   }
-  
+
   Future<void> _saveDownloadedModel(DownloadedModel model) async {
     final models = await getDownloadedModels();
     models.add(model);
-    await _storage.write('downloaded_models', jsonEncode(models.map((m) => m.toJson()).toList()));
+    await _storage.write('downloaded_models',
+        jsonEncode(models.map((m) => m.toJson()).toList()));
   }
 }

@@ -5,7 +5,9 @@ class ShellEscaper {
 
   static String escapeShellArg(String input) {
     if (input.isEmpty) return "''";
-    if (!_shellMetacharRegex.hasMatch(input) && !input.contains('"') && !input.contains("'")) return input;
+    if (!_shellMetacharRegex.hasMatch(input) &&
+        !input.contains('"') &&
+        !input.contains("'")) return input;
     return "'${input.replaceAll("'", "'\\''")}'";
   }
 

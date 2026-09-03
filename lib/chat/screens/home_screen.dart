@@ -29,7 +29,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadConversations() async {
     setState(() => _isLoading = true);
     await _db.initialize();
-    final conversations = await _db.getConversations(includeArchived: _showArchived);
+    final conversations =
+        await _db.getConversations(includeArchived: _showArchived);
     setState(() {
       _conversations = conversations;
       _isLoading = false;
@@ -38,10 +39,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Conversation> get _filteredConversations {
     if (_searchQuery.isEmpty) return _conversations;
-    return _conversations.where((c) =>
-      c.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-      (c.lastMessagePreview?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false)
-    ).toList();
+    return _conversations
+        .where((c) =>
+            c.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            (c.lastMessagePreview
+                    ?.toLowerCase()
+                    .contains(_searchQuery.toLowerCase()) ??
+                false))
+        .toList();
   }
 
   @override
@@ -135,12 +140,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _togglePin(Conversation conversation) async {
-    await _db.updateConversation(conversation.copyWith(pinned: !conversation.pinned));
+    await _db.updateConversation(
+        conversation.copyWith(pinned: !conversation.pinned));
     _loadConversations();
   }
 
   void _toggleArchive(Conversation conversation) async {
-    await _db.updateConversation(conversation.copyWith(archived: !conversation.archived));
+    await _db.updateConversation(
+        conversation.copyWith(archived: !conversation.archived));
     _loadConversations();
   }
 }

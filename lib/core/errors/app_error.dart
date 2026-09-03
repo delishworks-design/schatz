@@ -2,15 +2,16 @@ abstract class AppError implements Exception {
   final String message;
   final String? technicalMessage;
   final int? statusCode;
-  
+
   AppError({
     required this.message,
     this.technicalMessage,
     this.statusCode,
   });
-  
+
   @override
-  String toString() => technicalMessage != null ? '$message ($technicalMessage)' : message;
+  String toString() =>
+      technicalMessage != null ? '$message ($technicalMessage)' : message;
 }
 
 class AuthenticationError extends AppError {
@@ -23,7 +24,7 @@ class AuthenticationError extends AppError {
 
 class RateLimitError extends AppError {
   final Duration? retryAfter;
-  
+
   RateLimitError({
     super.message = 'Rate limit exceeded. Please try again later.',
     super.technicalMessage,

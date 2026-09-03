@@ -30,7 +30,7 @@ class ProviderProfile {
   final bool enabled;
   final DateTime createdAt;
   final DateTime updatedAt;
-  
+
   ProviderProfile({
     String? id,
     required this.displayName,
@@ -54,7 +54,7 @@ class ProviderProfile {
   })  : id = id ?? const Uuid().v4(),
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
-  
+
   ProviderProfile copyWith({
     String? displayName,
     ProviderType? type,
@@ -88,36 +88,37 @@ class ProviderProfile {
       visionEnabled: visionEnabled ?? this.visionEnabled,
       audioEnabled: audioEnabled ?? this.audioEnabled,
       toolCallingEnabled: toolCallingEnabled ?? this.toolCallingEnabled,
-      structuredOutputEnabled: structuredOutputEnabled ?? this.structuredOutputEnabled,
+      structuredOutputEnabled:
+          structuredOutputEnabled ?? this.structuredOutputEnabled,
       customHeaders: customHeaders ?? this.customHeaders,
       enabled: enabled ?? this.enabled,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );
   }
-  
+
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'displayName': displayName,
-    'type': type.name,
-    'baseUrl': baseUrl,
-    'apiKeyReference': apiKeyReference,
-    'selectedModel': selectedModel,
-    'availableModels': availableModels.map((m) => m.toJson()).toList(),
-    'temperature': temperature,
-    'maxTokens': maxTokens,
-    'topP': topP,
-    'streamingEnabled': streamingEnabled,
-    'visionEnabled': visionEnabled,
-    'audioEnabled': audioEnabled,
-    'toolCallingEnabled': toolCallingEnabled,
-    'structuredOutputEnabled': structuredOutputEnabled,
-    'customHeaders': customHeaders,
-    'enabled': enabled,
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt.toIso8601String(),
-  };
-  
+        'id': id,
+        'displayName': displayName,
+        'type': type.name,
+        'baseUrl': baseUrl,
+        'apiKeyReference': apiKeyReference,
+        'selectedModel': selectedModel,
+        'availableModels': availableModels.map((m) => m.toJson()).toList(),
+        'temperature': temperature,
+        'maxTokens': maxTokens,
+        'topP': topP,
+        'streamingEnabled': streamingEnabled,
+        'visionEnabled': visionEnabled,
+        'audioEnabled': audioEnabled,
+        'toolCallingEnabled': toolCallingEnabled,
+        'structuredOutputEnabled': structuredOutputEnabled,
+        'customHeaders': customHeaders,
+        'enabled': enabled,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+      };
+
   factory ProviderProfile.fromJson(Map<String, dynamic> json) {
     return ProviderProfile(
       id: json['id'] ?? const Uuid().v4(),
@@ -130,8 +131,9 @@ class ProviderProfile {
       apiKeyReference: json['apiKeyReference'] ?? '',
       selectedModel: json['selectedModel'],
       availableModels: (json['availableModels'] as List?)
-          ?.map((m) => ProviderModel.fromJson(m))
-          .toList() ?? [],
+              ?.map((m) => ProviderModel.fromJson(m))
+              .toList() ??
+          [],
       temperature: (json['temperature'] as num?)?.toDouble() ?? 0.7,
       maxTokens: json['maxTokens'] ?? 4096,
       topP: (json['topP'] as num?)?.toDouble() ?? 1.0,
@@ -142,8 +144,10 @@ class ProviderProfile {
       structuredOutputEnabled: json['structuredOutputEnabled'] ?? false,
       customHeaders: Map<String, String>.from(json['customHeaders'] ?? {}),
       enabled: json['enabled'] ?? true,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      createdAt:
+          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      updatedAt:
+          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
     );
   }
 }
@@ -158,7 +162,7 @@ class ProviderModel {
   final bool supportsToolCalling;
   final int? contextLength;
   final String? description;
-  
+
   ProviderModel({
     required this.id,
     required this.name,
@@ -170,19 +174,19 @@ class ProviderModel {
     this.contextLength,
     this.description,
   });
-  
+
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'providerId': providerId,
-    'supportsVision': supportsVision,
-    'supportsAudio': supportsAudio,
-    'supportsStreaming': supportsStreaming,
-    'supportsToolCalling': supportsToolCalling,
-    'contextLength': contextLength,
-    'description': description,
-  };
-  
+        'id': id,
+        'name': name,
+        'providerId': providerId,
+        'supportsVision': supportsVision,
+        'supportsAudio': supportsAudio,
+        'supportsStreaming': supportsStreaming,
+        'supportsToolCalling': supportsToolCalling,
+        'contextLength': contextLength,
+        'description': description,
+      };
+
   factory ProviderModel.fromJson(Map<String, dynamic> json) {
     return ProviderModel(
       id: json['id'],

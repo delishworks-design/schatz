@@ -5,9 +5,9 @@ import '../../providers/services/provider_service.dart';
 
 class ModelScannerScreen extends StatefulWidget {
   final String? providerId;
-  
+
   const ModelScannerScreen({super.key, this.providerId});
-  
+
   @override
   State<ModelScannerScreen> createState() => _ModelScannerScreenState();
 }
@@ -19,13 +19,13 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
   String? _error;
   ProviderProfile? _selectedProvider;
   List<ProviderProfile> _providers = [];
-  
+
   @override
   void initState() {
     super.initState();
     _loadProviders();
   }
-  
+
   Future<void> _loadProviders() async {
     final profiles = await _providerService.getProfiles();
     if (!mounted) return;
@@ -35,7 +35,7 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
         _selectedProvider = profiles.first;
       }
     });
-    
+
     if (widget.providerId != null) {
       try {
         _selectedProvider = profiles.firstWhere(
@@ -45,19 +45,19 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
       } catch (_) {}
     }
   }
-  
+
   Future<void> _scanModels() async {
     if (_selectedProvider == null) {
       setState(() => _error = 'Please select a provider first');
       return;
     }
-    
+
     setState(() {
       _isScanning = true;
       _error = null;
       _models = [];
     });
-    
+
     try {
       final models = await _providerService.listModels(_selectedProvider!);
       if (!mounted) return;
@@ -73,7 +73,7 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
       });
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -98,7 +98,7 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
       ),
     );
   }
-  
+
   Widget _buildProviderSelector() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -124,7 +124,7 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
       ),
     );
   }
-  
+
   Widget _buildScanButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -147,7 +147,7 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
       ),
     );
   }
-  
+
   Widget _buildModelList() {
     if (_isScanning) {
       return const Center(
@@ -156,18 +156,20 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text('Scanning for available models...', style: TextStyle(color: AppTheme.textSecondaryColor)),
+            Text('Scanning for available models...',
+                style: TextStyle(color: AppTheme.textSecondaryColor)),
           ],
         ),
       );
     }
-    
+
     if (_error != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: AppTheme.errorColor),
+            const Icon(Icons.error_outline,
+                size: 48, color: AppTheme.errorColor),
             const SizedBox(height: 16),
             Text(_error!, style: const TextStyle(color: AppTheme.errorColor)),
             const SizedBox(height: 16),
@@ -179,23 +181,26 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
         ),
       );
     }
-    
+
     if (_models.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off, size: 48, color: AppTheme.textSecondaryColor),
+            Icon(Icons.search_off,
+                size: 48, color: AppTheme.textSecondaryColor),
             SizedBox(height: 16),
-            Text('No models found', style: TextStyle(color: AppTheme.textSecondaryColor)),
+            Text('No models found',
+                style: TextStyle(color: AppTheme.textSecondaryColor)),
             SizedBox(height: 8),
-            Text('Tap "Scan Models" to discover available models', 
-                style: TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12)),
+            Text('Tap "Scan Models" to discover available models',
+                style: TextStyle(
+                    color: AppTheme.textSecondaryColor, fontSize: 12)),
           ],
         ),
       );
     }
-    
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _models.length,
@@ -205,7 +210,7 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
       },
     );
   }
-  
+
   Widget _buildModelCard(ProviderModel model) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -219,7 +224,8 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
           ),
           child: const Icon(Icons.smart_toy, color: AppTheme.primaryColor),
         ),
-        title: Text(model.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(model.name,
+            style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: _buildModelSubtitle(model),
         trailing: IconButton(
           icon: const Icon(Icons.info_outline),
@@ -228,20 +234,21 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
       ),
     );
   }
-  
+
   Widget _buildModelSubtitle(ProviderModel model) {
     final features = <String>[];
     if (model.supportsVision) features.add('Vision');
     if (model.supportsStreaming) features.add('Streaming');
     if (model.supportsToolCalling) features.add('Tools');
-    if (model.contextLength != null) features.add('${(model.contextLength! / 1000).toStringAsFixed(1)}K');
-    
+    if (model.contextLength != null)
+      features.add('${(model.contextLength! / 1000).toStringAsFixed(1)}K');
+
     return Text(
       features.isEmpty ? 'No features detected' : features.join(' • '),
       style: const TextStyle(fontSize: 12),
     );
   }
-  
+
   void _showModelDetails(ProviderModel model) {
     showDialog(
       context: context,
@@ -253,9 +260,11 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
           children: [
             _buildDetailRow('ID', model.id),
             if (model.contextLength != null)
-              _buildDetailRow('Context Length', '${model.contextLength} tokens'),
+              _buildDetailRow(
+                  'Context Length', '${model.contextLength} tokens'),
             const Divider(),
-            const Text('Capabilities:', style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text('Capabilities:',
+                style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             _buildCapabilityChip('Vision', model.supportsVision),
             _buildCapabilityChip('Audio', model.supportsAudio),
@@ -272,30 +281,32 @@ class _ModelScannerScreenState extends State<ModelScannerScreen> {
       ),
     );
   }
-  
+
   Widget _buildDetailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppTheme.textSecondaryColor)),
+          Text(label,
+              style: const TextStyle(color: AppTheme.textSecondaryColor)),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );
   }
-  
+
   Widget _buildCapabilityChip(String label, bool supported) {
     return Padding(
       padding: const EdgeInsets.only(right: 8, bottom: 8),
       child: Chip(
         label: Text(label, style: TextStyle(fontSize: 12)),
-        backgroundColor: supported 
+        backgroundColor: supported
             ? AppTheme.successColor.withOpacity(0.2)
             : AppTheme.surfaceColor,
         labelStyle: TextStyle(
-          color: supported ? AppTheme.successColor : AppTheme.textSecondaryColor,
+          color:
+              supported ? AppTheme.successColor : AppTheme.textSecondaryColor,
         ),
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),

@@ -13,7 +13,7 @@ class Conversation {
   final DateTime updatedAt;
   final int messageCount;
   final String? lastMessagePreview;
-  
+
   Conversation({
     String? id,
     this.title = 'New Chat',
@@ -30,7 +30,7 @@ class Conversation {
   })  : id = id ?? const Uuid().v4(),
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
-  
+
   Conversation copyWith({
     String? title,
     String? systemPrompt,
@@ -58,22 +58,22 @@ class Conversation {
       lastMessagePreview: lastMessagePreview ?? this.lastMessagePreview,
     );
   }
-  
+
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    'systemPrompt': systemPrompt,
-    'personaId': personaId,
-    'providerId': providerId,
-    'modelId': modelId,
-    'pinned': pinned,
-    'archived': archived,
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt.toIso8601String(),
-    'messageCount': messageCount,
-    'lastMessagePreview': lastMessagePreview,
-  };
-  
+        'id': id,
+        'title': title,
+        'systemPrompt': systemPrompt,
+        'personaId': personaId,
+        'providerId': providerId,
+        'modelId': modelId,
+        'pinned': pinned,
+        'archived': archived,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+        'messageCount': messageCount,
+        'lastMessagePreview': lastMessagePreview,
+      };
+
   factory Conversation.fromJson(Map<String, dynamic> json) {
     return Conversation(
       id: json['id'],
@@ -84,8 +84,10 @@ class Conversation {
       modelId: json['modelId'],
       pinned: json['pinned'] ?? false,
       archived: json['archived'] ?? false,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      createdAt:
+          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      updatedAt:
+          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
       messageCount: json['messageCount'] ?? 0,
       lastMessagePreview: json['lastMessagePreview'],
     );

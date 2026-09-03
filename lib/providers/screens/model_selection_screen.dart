@@ -6,7 +6,7 @@ import '../widgets/model_info_card.dart';
 
 class ModelSelectionScreen extends StatefulWidget {
   const ModelSelectionScreen({super.key});
-  
+
   @override
   State<ModelSelectionScreen> createState() => _ModelSelectionScreenState();
 }
@@ -19,20 +19,20 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
   bool _isLoading = true;
   String _searchQuery = '';
   String? _selectedProviderFilter;
-  
+
   @override
   void initState() {
     super.initState();
     _loadModels();
   }
-  
+
   Future<void> _loadModels() async {
     setState(() => _isLoading = true);
-    
+
     final profiles = await _providerService.getProfiles();
     if (!mounted) return;
     _providers = profiles;
-    
+
     final allModels = <ProviderModel>[];
     for (final profile in profiles) {
       try {
@@ -42,7 +42,7 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
         }
       } catch (_) {}
     }
-    
+
     if (!mounted) return;
     setState(() {
       _allModels = allModels;
@@ -50,22 +50,22 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
       _isLoading = false;
     });
   }
-  
+
   void _filterModels() {
     setState(() {
       _filteredModels = _allModels.where((model) {
         final matchesSearch = _searchQuery.isEmpty ||
             model.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
             model.id.toLowerCase().contains(_searchQuery.toLowerCase());
-        
+
         final matchesProvider = _selectedProviderFilter == null ||
             model.providerId == _selectedProviderFilter;
-        
+
         return matchesSearch && matchesProvider;
       }).toList();
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,7 +90,7 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
       ),
     );
   }
-  
+
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -115,7 +115,7 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
       ),
     );
   }
-  
+
   Widget _buildProviderFilter() {
     return Container(
       height: 50,
@@ -124,12 +124,13 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
         scrollDirection: Axis.horizontal,
         children: [
           _buildFilterChip('All', null),
-          ..._providers.map((provider) => _buildFilterChip(provider.displayName, provider.id)),
+          ..._providers.map((provider) =>
+              _buildFilterChip(provider.displayName, provider.id)),
         ],
       ),
     );
   }
-  
+
   Widget _buildFilterChip(String label, String? providerId) {
     final isSelected = _selectedProviderFilter == providerId;
     return Padding(
@@ -148,7 +149,7 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
       ),
     );
   }
-  
+
   Widget _buildModelList() {
     if (_isLoading) {
       return const Center(
@@ -157,33 +158,38 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text('Loading models...', style: TextStyle(color: AppTheme.textSecondaryColor)),
+            Text('Loading models...',
+                style: TextStyle(color: AppTheme.textSecondaryColor)),
           ],
         ),
       );
     }
-    
+
     if (_filteredModels.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.search_off, size: 48, color: AppTheme.textSecondaryColor),
+            const Icon(Icons.search_off,
+                size: 48, color: AppTheme.textSecondaryColor),
             const SizedBox(height: 16),
             Text(
-              _searchQuery.isNotEmpty ? 'No models match your search' : 'No models available',
+              _searchQuery.isNotEmpty
+                  ? 'No models match your search'
+                  : 'No models available',
               style: const TextStyle(color: AppTheme.textSecondaryColor),
             ),
             const SizedBox(height: 8),
             const Text(
               'Add a provider and scan for models first',
-              style: TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12),
+              style:
+                  TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12),
             ),
           ],
         ),
       );
     }
-    
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: _filteredModels.length,
@@ -196,7 +202,7 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
       },
     );
   }
-  
+
   void _selectModel(ProviderModel model) {
     Navigator.pop(context, model);
   }

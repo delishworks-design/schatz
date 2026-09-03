@@ -7,7 +7,7 @@ class ModelInfoCard extends StatelessWidget {
   final String? providerName;
   final bool isSelected;
   final VoidCallback? onTap;
-  
+
   const ModelInfoCard({
     super.key,
     required this.model,
@@ -15,7 +15,7 @@ class ModelInfoCard extends StatelessWidget {
     this.isSelected = false,
     this.onTap,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -46,7 +46,7 @@ class ModelInfoCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildHeader() {
     return Row(
       children: [
@@ -87,24 +87,20 @@ class ModelInfoCard extends StatelessWidget {
       ],
     );
   }
-  
+
   Widget _buildCapabilities() {
     return Wrap(
       spacing: 8,
       runSpacing: 4,
       children: [
-        if (model.supportsVision)
-          _buildChip('Vision', Icons.visibility),
-        if (model.supportsAudio)
-          _buildChip('Audio', Icons.mic),
-        if (model.supportsStreaming)
-          _buildChip('Streaming', Icons.sync),
-        if (model.supportsToolCalling)
-          _buildChip('Tools', Icons.build),
+        if (model.supportsVision) _buildChip('Vision', Icons.visibility),
+        if (model.supportsAudio) _buildChip('Audio', Icons.mic),
+        if (model.supportsStreaming) _buildChip('Streaming', Icons.sync),
+        if (model.supportsToolCalling) _buildChip('Tools', Icons.build),
       ],
     );
   }
-  
+
   Widget _buildChip(String label, IconData icon) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -128,14 +124,16 @@ class ModelInfoCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildContextLength() {
     final length = model.contextLength!;
-    final displayLength = length >= 1000 ? '${(length / 1000).toStringAsFixed(1)}K' : '$length';
-    
+    final displayLength =
+        length >= 1000 ? '${(length / 1000).toStringAsFixed(1)}K' : '$length';
+
     return Row(
       children: [
-        const Icon(Icons.straighten, size: 16, color: AppTheme.textSecondaryColor),
+        const Icon(Icons.straighten,
+            size: 16, color: AppTheme.textSecondaryColor),
         const SizedBox(width: 8),
         Text(
           'Context: $displayLength tokens',
@@ -147,7 +145,7 @@ class ModelInfoCard extends StatelessWidget {
       ],
     );
   }
-  
+
   Widget _buildDescription() {
     return Text(
       model.description!,

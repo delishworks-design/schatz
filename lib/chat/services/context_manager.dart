@@ -7,7 +7,7 @@ class ContextManager {
   ContextManager._();
 
   final SecureStorage _storage = SecureStorage();
-  
+
   String? _currentProviderId;
   String? _currentModelId;
   List<ChatMessage> _contextBuffer = [];
@@ -21,8 +21,12 @@ class ContextManager {
   Future<void> initialize() async {
     _currentProviderId = await _storage.read('active_provider_id');
     _currentModelId = await _storage.read('active_model_id');
-    _maxContextTokens = int.tryParse(await _storage.read('max_context_tokens') ?? '4000') ?? 4000;
-    _contextWindowTokens = int.tryParse(await _storage.read('context_window_tokens') ?? '8000') ?? 8000;
+    _maxContextTokens =
+        int.tryParse(await _storage.read('max_context_tokens') ?? '4000') ??
+            4000;
+    _contextWindowTokens =
+        int.tryParse(await _storage.read('context_window_tokens') ?? '8000') ??
+            8000;
   }
 
   Future<void> setCurrentProvider(String providerId) async {
@@ -36,7 +40,8 @@ class ContextManager {
     await _storage.write('active_model_id', modelId);
 
     if (previousModel != null && previousModel != modelId) {
-      await _onModelChanged(previousModel, modelId, conversationId: conversationId);
+      await _onModelChanged(previousModel, modelId,
+          conversationId: conversationId);
     }
   }
 
@@ -46,7 +51,9 @@ class ContextManager {
     String? newProviderId,
     List<ChatMessage>? messages,
   }) async {
-    if (oldProviderId != null && newProviderId != null && oldProviderId != newProviderId) {
+    if (oldProviderId != null &&
+        newProviderId != null &&
+        oldProviderId != newProviderId) {
       if (messages != null && messages.isNotEmpty) {
         updateContextBuffer(messages);
         final summary = _generateContextSummary();
@@ -61,7 +68,8 @@ class ContextManager {
     }
   }
 
-  Future<void> _onModelChanged(String oldModel, String newModel, {String? conversationId}) async {
+  Future<void> _onModelChanged(String oldModel, String newModel,
+      {String? conversationId}) async {
     if (_contextBuffer.isNotEmpty) {
       final summary = _generateContextSummary();
       _contextBuffer = [
@@ -94,13 +102,15 @@ class ContextManager {
         : _contextBuffer;
 
     final summary = StringBuffer();
-    summary.writeln('Previous conversation included ${_contextBuffer.length} messages.');
+    summary.writeln(
+        'Previous conversation included ${_contextBuffer.length} messages.');
     if (topics.isNotEmpty) {
       summary.writeln('Topics discussed: ${topics.take(5).join(", ")}.');
     }
     summary.writeln('\nRecent messages:');
     for (final msg in recentMessages) {
-      summary.writeln('${msg.role.name}: ${msg.content.substring(0, msg.content.length.clamp(0, 100))}');
+      summary.writeln(
+          '${msg.role.name}: ${msg.content.substring(0, msg.content.length.clamp(0, 100))}');
     }
 
     return summary.toString();

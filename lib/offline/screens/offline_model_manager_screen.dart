@@ -4,22 +4,23 @@ import '../services/model_downloader.dart';
 
 class OfflineModelManagerScreen extends StatefulWidget {
   const OfflineModelManagerScreen({super.key});
-  
+
   @override
-  State<OfflineModelManagerScreen> createState() => _OfflineModelManagerScreenState();
+  State<OfflineModelManagerScreen> createState() =>
+      _OfflineModelManagerScreenState();
 }
 
 class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
   final ModelDownloader _downloader = ModelDownloader();
   List<DownloadedModel> _downloadedModels = [];
   bool _isLoading = true;
-  
+
   @override
   void initState() {
     super.initState();
     _loadModels();
   }
-  
+
   Future<void> _loadModels() async {
     setState(() => _isLoading = true);
     final models = await _downloader.getDownloadedModels();
@@ -28,7 +29,7 @@ class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
       _isLoading = false;
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,7 +50,7 @@ class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
               : _buildModelList(),
     );
   }
-  
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -80,7 +81,7 @@ class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
       ),
     );
   }
-  
+
   Widget _buildModelList() {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -91,7 +92,7 @@ class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
       },
     );
   }
-  
+
   Widget _buildModelCard(DownloadedModel model) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -109,7 +110,8 @@ class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
                     color: AppTheme.primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.offline_bolt, color: AppTheme.primaryColor),
+                  child: const Icon(Icons.offline_bolt,
+                      color: AppTheme.primaryColor),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -140,7 +142,8 @@ class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
                     const PopupMenuItem(value: 'info', child: Text('Details')),
                     const PopupMenuItem(
                       value: 'delete',
-                      child: Text('Delete', style: TextStyle(color: AppTheme.errorColor)),
+                      child: Text('Delete',
+                          style: TextStyle(color: AppTheme.errorColor)),
                     ),
                   ],
                 ),
@@ -153,12 +156,12 @@ class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
       ),
     );
   }
-  
+
   Widget _buildModelInfo(DownloadedModel model) {
-    final contextDisplay = model.contextLength >= 1024 
+    final contextDisplay = model.contextLength >= 1024
         ? '${(model.contextLength / 1024).toStringAsFixed(0)}K'
         : '${model.contextLength}';
-    
+
     return Row(
       children: [
         _buildInfoChip('${model.quantization}', Icons.memory),
@@ -169,7 +172,7 @@ class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
       ],
     );
   }
-  
+
   Widget _buildInfoChip(String label, IconData icon) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -193,7 +196,7 @@ class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
       ),
     );
   }
-  
+
   void _handleMenuAction(String action, DownloadedModel model) {
     switch (action) {
       case 'use':
@@ -207,14 +210,14 @@ class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
         break;
     }
   }
-  
+
   // TODO: Actual model loading requires InferenceService integration.
   void _useModel(DownloadedModel model) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${model.name} set as active offline model')),
     );
   }
-  
+
   void _showModelDetails(DownloadedModel model) {
     showDialog(
       context: context,
@@ -226,9 +229,11 @@ class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
           children: [
             _buildDetailRow('File Size', model.size),
             _buildDetailRow('Quantization', model.quantization),
-            _buildDetailRow('Context Length', '${model.contextLength >= 1024 ? (model.contextLength / 1024).toStringAsFixed(0) + "K" : model.contextLength} tokens'),
+            _buildDetailRow('Context Length',
+                '${model.contextLength >= 1024 ? (model.contextLength / 1024).toStringAsFixed(0) + "K" : model.contextLength} tokens'),
             _buildDetailRow('RAM Required', '${model.ramRequired}GB'),
-            _buildDetailRow('Downloaded', model.downloadedAt.toString().substring(0, 10)),
+            _buildDetailRow(
+                'Downloaded', model.downloadedAt.toString().substring(0, 10)),
           ],
         ),
         actions: [
@@ -240,20 +245,21 @@ class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
       ),
     );
   }
-  
+
   Widget _buildDetailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppTheme.textSecondaryColor)),
+          Text(label,
+              style: const TextStyle(color: AppTheme.textSecondaryColor)),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );
   }
-  
+
   void _deleteModel(DownloadedModel model) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -267,12 +273,13 @@ class _OfflineModelManagerScreenState extends State<OfflineModelManagerScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: AppTheme.errorColor)),
+            child: const Text('Delete',
+                style: TextStyle(color: AppTheme.errorColor)),
           ),
         ],
       ),
     );
-    
+
     if (confirmed == true) {
       await _downloader.deleteModel(model.id);
       _loadModels();

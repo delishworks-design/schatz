@@ -37,8 +37,8 @@ class EmptyState extends StatelessWidget {
             Text(
               'Welcome to Schatz',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: AppTheme.primaryColor,
-              ),
+                    color: AppTheme.primaryColor,
+                  ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -72,7 +72,8 @@ class EmptyState extends StatelessWidget {
   Widget _buildSuggestion(BuildContext context, String text, IconData icon) {
     return InkWell(
       onTap: () {
-        Navigator.pushNamed(context, AppRouter.chat, arguments: {'initialPrompt': text});
+        Navigator.pushNamed(context, AppRouter.chat,
+            arguments: {'initialPrompt': text});
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(

@@ -24,7 +24,7 @@ class Tool {
   final Map<String, ToolParameter> parameters;
   final String? example;
   final bool requiresAuth;
-  
+
   const Tool({
     required this.id,
     required this.name,
@@ -35,20 +35,20 @@ class Tool {
     this.example,
     this.requiresAuth = true,
   });
-  
+
   String get fullName => '$pluginId.$id';
-  
+
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'description': description,
-    'pluginId': pluginId,
-    'type': type.name,
-    'parameters': parameters.map((k, v) => MapEntry(k, v.toJson())),
-    'example': example,
-    'requiresAuth': requiresAuth,
-  };
-  
+        'id': id,
+        'name': name,
+        'description': description,
+        'pluginId': pluginId,
+        'type': type.name,
+        'parameters': parameters.map((k, v) => MapEntry(k, v.toJson())),
+        'example': example,
+        'requiresAuth': requiresAuth,
+      };
+
   factory Tool.fromJson(Map<String, dynamic> json) {
     return Tool(
       id: json['id'] ?? '',
@@ -60,8 +60,9 @@ class Tool {
         orElse: () => ToolType.read,
       ),
       parameters: (json['parameters'] as Map<String, dynamic>?)?.map(
-        (k, v) => MapEntry(k, ToolParameter.fromJson(v)),
-      ) ?? {},
+            (k, v) => MapEntry(k, ToolParameter.fromJson(v)),
+          ) ??
+          {},
       example: json['example'],
       requiresAuth: json['requiresAuth'] ?? true,
     );
@@ -75,7 +76,7 @@ class ToolParameter {
   final bool required;
   final dynamic defaultValue;
   final List<String>? options;
-  
+
   const ToolParameter({
     required this.name,
     required this.description,
@@ -84,16 +85,16 @@ class ToolParameter {
     this.defaultValue,
     this.options,
   });
-  
+
   Map<String, dynamic> toJson() => {
-    'name': name,
-    'description': description,
-    'type': type.name,
-    'required': required,
-    'defaultValue': defaultValue,
-    'options': options,
-  };
-  
+        'name': name,
+        'description': description,
+        'type': type.name,
+        'required': required,
+        'defaultValue': defaultValue,
+        'options': options,
+      };
+
   factory ToolParameter.fromJson(Map<String, dynamic> json) {
     return ToolParameter(
       name: json['name'] ?? '',
@@ -104,7 +105,8 @@ class ToolParameter {
       ),
       required: json['required'] ?? false,
       defaultValue: json['defaultValue'],
-      options: json['options'] != null ? List<String>.from(json['options']) : null,
+      options:
+          json['options'] != null ? List<String>.from(json['options']) : null,
     );
   }
 }

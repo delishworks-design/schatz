@@ -8,7 +8,8 @@ class PluginMarketplaceScreen extends StatefulWidget {
   const PluginMarketplaceScreen({super.key});
 
   @override
-  State<PluginMarketplaceScreen> createState() => _PluginMarketplaceScreenState();
+  State<PluginMarketplaceScreen> createState() =>
+      _PluginMarketplaceScreenState();
 }
 
 class _PluginMarketplaceScreenState extends State<PluginMarketplaceScreen> {
@@ -39,17 +40,38 @@ class _PluginMarketplaceScreenState extends State<PluginMarketplaceScreen> {
 
   Future<void> _loadPlugins() async {
     _installedPlugins = await _pluginService.getInstalledPlugins();
-    
+
     _allPlugins = [
-      _buildPluginFromIntegration('github', 'GitHub', 'Interact with GitHub repositories, issues, and pull requests', PluginCategory.development),
-      _buildPluginFromIntegration('vercel', 'Vercel', 'Deploy and manage Vercel projects and functions', PluginCategory.deployment),
-      _buildPluginFromIntegration('supabase', 'Supabase', 'Manage Supabase database, auth, and storage', PluginCategory.database),
-      _buildPluginFromIntegration('netlify', 'Netlify', 'Deploy and manage Netlify sites', PluginCategory.deployment),
-      _buildPluginFromIntegration('railway', 'Railway', 'Deploy and manage Railway projects', PluginCategory.infrastructure),
-      _buildPluginFromIntegration('firebase', 'Firebase', 'Firebase services integration', PluginCategory.backend),
-      _buildPluginFromIntegration('stripe', 'Stripe', 'Manage Stripe payments and customers', PluginCategory.payment),
-      _buildPluginFromIntegration('cloudflare', 'Cloudflare', 'Manage Cloudflare Workers and domains', PluginCategory.infrastructure),
-      _buildPluginFromIntegration('termux', 'Termux', 'Execute commands in Termux environment', PluginCategory.execution),
+      _buildPluginFromIntegration(
+          'github',
+          'GitHub',
+          'Interact with GitHub repositories, issues, and pull requests',
+          PluginCategory.development),
+      _buildPluginFromIntegration(
+          'vercel',
+          'Vercel',
+          'Deploy and manage Vercel projects and functions',
+          PluginCategory.deployment),
+      _buildPluginFromIntegration(
+          'supabase',
+          'Supabase',
+          'Manage Supabase database, auth, and storage',
+          PluginCategory.database),
+      _buildPluginFromIntegration('netlify', 'Netlify',
+          'Deploy and manage Netlify sites', PluginCategory.deployment),
+      _buildPluginFromIntegration('railway', 'Railway',
+          'Deploy and manage Railway projects', PluginCategory.infrastructure),
+      _buildPluginFromIntegration('firebase', 'Firebase',
+          'Firebase services integration', PluginCategory.backend),
+      _buildPluginFromIntegration('stripe', 'Stripe',
+          'Manage Stripe payments and customers', PluginCategory.payment),
+      _buildPluginFromIntegration(
+          'cloudflare',
+          'Cloudflare',
+          'Manage Cloudflare Workers and domains',
+          PluginCategory.infrastructure),
+      _buildPluginFromIntegration('termux', 'Termux',
+          'Execute commands in Termux environment', PluginCategory.execution),
     ];
 
     _filterPlugins();
@@ -57,7 +79,8 @@ class _PluginMarketplaceScreenState extends State<PluginMarketplaceScreen> {
     setState(() => _isLoading = false);
   }
 
-  Plugin _buildPluginFromIntegration(String id, String name, String description, PluginCategory category) {
+  Plugin _buildPluginFromIntegration(
+      String id, String name, String description, PluginCategory category) {
     final isInstalled = _installedPlugins.any((p) => p.id == id);
     return Plugin(
       id: id,
@@ -72,7 +95,7 @@ class _PluginMarketplaceScreenState extends State<PluginMarketplaceScreen> {
 
   void _filterPlugins() {
     _filteredPlugins = _allPlugins.where((plugin) {
-      final matchesCategory = _selectedCategory == 'All' || 
+      final matchesCategory = _selectedCategory == 'All' ||
           plugin.category.name.toLowerCase() == _selectedCategory.toLowerCase();
       final matchesSearch = _searchQuery.isEmpty ||
           plugin.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -198,13 +221,15 @@ class _PluginMarketplaceScreenState extends State<PluginMarketplaceScreen> {
                 children: [
                   _buildPluginIcon(plugin),
                   if (installed)
-                    const Icon(Icons.check_circle, color: AppTheme.successColor, size: 20),
+                    const Icon(Icons.check_circle,
+                        color: AppTheme.successColor, size: 20),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
                 plugin.name,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -212,7 +237,8 @@ class _PluginMarketplaceScreenState extends State<PluginMarketplaceScreen> {
               Expanded(
                 child: Text(
                   plugin.description,
-                  style: const TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12),
+                  style: const TextStyle(
+                      color: AppTheme.textSecondaryColor, fontSize: 12),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -223,7 +249,8 @@ class _PluginMarketplaceScreenState extends State<PluginMarketplaceScreen> {
                   const Spacer(),
                   Text(
                     plugin.version,
-                    style: const TextStyle(color: AppTheme.textSecondaryColor, fontSize: 11),
+                    style: const TextStyle(
+                        color: AppTheme.textSecondaryColor, fontSize: 11),
                   ),
                 ],
               ),
@@ -270,7 +297,8 @@ class _PluginMarketplaceScreenState extends State<PluginMarketplaceScreen> {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        category.name.substring(0, 1).toUpperCase() + category.name.substring(1),
+        category.name.substring(0, 1).toUpperCase() +
+            category.name.substring(1),
         style: const TextStyle(color: AppTheme.primaryColor, fontSize: 10),
       ),
     );

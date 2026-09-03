@@ -48,7 +48,8 @@ class _PluginManagerScreenState extends State<PluginManagerScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Uninstall Plugin'),
-        content: Text('Remove ${plugin.name}? This will disable all its tools.'),
+        content:
+            Text('Remove ${plugin.name}? This will disable all its tools.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -56,7 +57,8 @@ class _PluginManagerScreenState extends State<PluginManagerScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Uninstall', style: TextStyle(color: AppTheme.errorColor)),
+            child: const Text('Uninstall',
+                style: TextStyle(color: AppTheme.errorColor)),
           ),
         ],
       ),
@@ -77,7 +79,8 @@ class _PluginManagerScreenState extends State<PluginManagerScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.store),
-            onPressed: () => Navigator.pushNamed(context, AppRouter.pluginMarketplace),
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRouter.pluginMarketplace),
           ),
         ],
       ),
@@ -94,20 +97,28 @@ class _PluginManagerScreenState extends State<PluginManagerScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.extension_off, size: 64, color: AppTheme.primaryColor.withOpacity(0.3)),
+          Icon(Icons.extension_off,
+              size: 64, color: AppTheme.primaryColor.withOpacity(0.3)),
           const SizedBox(height: 16),
           Text(
             'No plugins installed',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(color: AppTheme.textSecondaryColor),
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(color: AppTheme.textSecondaryColor),
           ),
           const SizedBox(height: 8),
           Text(
             'Browse the marketplace to add functionality',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondaryColor),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: AppTheme.textSecondaryColor),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            onPressed: () => Navigator.pushNamed(context, AppRouter.pluginMarketplace),
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRouter.pluginMarketplace),
             icon: const Icon(Icons.store),
             label: const Text('Open Marketplace'),
           ),

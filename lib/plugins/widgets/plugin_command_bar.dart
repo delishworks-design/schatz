@@ -9,7 +9,7 @@ class PluginCommandBar extends StatefulWidget {
   final Function(Map<String, dynamic>)? onToolExecuted;
 
   const PluginCommandBar({
-    super.key, 
+    super.key,
     this.conversationId,
     this.onToolExecuted,
   });
@@ -79,27 +79,33 @@ class _PluginCommandBarState extends State<PluginCommandBar> {
                       children: [
                         Row(
                           children: [
-                            Text(param.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                            Text(param.name,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w500)),
                             if (param.required)
-                              const Text(' *', style: TextStyle(color: AppTheme.errorColor)),
+                              const Text(' *',
+                                  style: TextStyle(color: AppTheme.errorColor)),
                           ],
                         ),
                         const SizedBox(height: 4),
                         Text(
                           param.description,
-                          style: const TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12),
+                          style: const TextStyle(
+                              color: AppTheme.textSecondaryColor, fontSize: 12),
                         ),
                         const SizedBox(height: 8),
                         if (param.options != null)
                           DropdownButtonFormField<String>(
                             items: param.options!.map((option) {
-                              return DropdownMenuItem(value: option, child: Text(option));
+                              return DropdownMenuItem(
+                                  value: option, child: Text(option));
                             }).toList(),
                             onChanged: (value) {
                               controllers[entry.key]?.text = value ?? '';
                             },
                             decoration: const InputDecoration(
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                             ),
                           )
                         else
@@ -215,7 +221,8 @@ class _PluginCommandBarState extends State<PluginCommandBar> {
                   padding: const EdgeInsets.only(right: 8),
                   child: ActionChip(
                     avatar: Icon(_getToolIcon(tool.type), size: 16),
-                    label: Text(tool.name, style: const TextStyle(fontSize: 12)),
+                    label:
+                        Text(tool.name, style: const TextStyle(fontSize: 12)),
                     onPressed: () => _showToolExecutionDialog(tool),
                     backgroundColor: AppTheme.surfaceColor,
                   ),
@@ -247,7 +254,8 @@ class _PluginCommandBarState extends State<PluginCommandBar> {
               const Spacer(),
               Text(
                 '${_tools.length} tools',
-                style: const TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12),
+                style: const TextStyle(
+                    color: AppTheme.textSecondaryColor, fontSize: 12),
               ),
             ],
           ),
@@ -257,7 +265,8 @@ class _PluginCommandBarState extends State<PluginCommandBar> {
             decoration: InputDecoration(
               hintText: 'Search tools...',
               prefixIcon: const Icon(Icons.search, size: 20),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),

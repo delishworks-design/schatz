@@ -8,7 +8,7 @@ class ActivityTrace extends StatefulWidget {
   final VoidCallback? onToggle;
   final int tokenCount;
   final Duration? elapsed;
-  
+
   const ActivityTrace({
     super.key,
     required this.steps,
@@ -17,20 +17,20 @@ class ActivityTrace extends StatefulWidget {
     this.tokenCount = 0,
     this.elapsed,
   });
-  
+
   @override
   State<ActivityTrace> createState() => _ActivityTraceState();
 }
 
 class _ActivityTraceState extends State<ActivityTrace> {
   late bool _isExpanded;
-  
+
   @override
   void initState() {
     super.initState();
     _isExpanded = widget.isExpanded;
   }
-  
+
   @override
   void didUpdateWidget(ActivityTrace oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -38,11 +38,11 @@ class _ActivityTraceState extends State<ActivityTrace> {
       _isExpanded = widget.isExpanded;
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     if (widget.steps.isEmpty) return const SizedBox.shrink();
-    
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
@@ -60,12 +60,17 @@ class _ActivityTraceState extends State<ActivityTrace> {
       ),
     );
   }
-  
+
   Widget _buildHeader() {
-    final completedCount = widget.steps.where((s) => s.status == ActivityStepStatus.completed).length;
-    final inProgressCount = widget.steps.where((s) => s.status == ActivityStepStatus.inProgress).length;
-    final hasError = widget.steps.any((s) => s.status == ActivityStepStatus.error);
-    
+    final completedCount = widget.steps
+        .where((s) => s.status == ActivityStepStatus.completed)
+        .length;
+    final inProgressCount = widget.steps
+        .where((s) => s.status == ActivityStepStatus.inProgress)
+        .length;
+    final hasError =
+        widget.steps.any((s) => s.status == ActivityStepStatus.error);
+
     return InkWell(
       onTap: () {
         setState(() => _isExpanded = !_isExpanded);
@@ -82,7 +87,8 @@ class _ActivityTraceState extends State<ActivityTrace> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             else if (hasError)
-              const Icon(Icons.error_outline, size: 12, color: AppTheme.errorColor)
+              const Icon(Icons.error_outline,
+                  size: 12, color: AppTheme.errorColor)
             else
               Icon(Icons.check_circle, size: 12, color: AppTheme.successColor),
             const SizedBox(width: 8),
@@ -124,14 +130,14 @@ class _ActivityTraceState extends State<ActivityTrace> {
       ),
     );
   }
-  
+
   String _getStatusText(int completed, int inProgress, bool hasError) {
     if (hasError) return 'Error occurred';
     if (inProgress > 0) return 'Processing...';
     if (completed == widget.steps.length) return 'Complete';
     return '$completed/${widget.steps.length} steps';
   }
-  
+
   Widget _buildStepsList() {
     return Container(
       constraints: const BoxConstraints(maxHeight: 150),
@@ -146,7 +152,7 @@ class _ActivityTraceState extends State<ActivityTrace> {
       ),
     );
   }
-  
+
   Widget _buildStepItem(ActivityStep step) {
     Color statusColor;
     switch (step.status) {
@@ -163,7 +169,7 @@ class _ActivityTraceState extends State<ActivityTrace> {
         statusColor = AppTheme.errorColor;
         break;
     }
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -200,7 +206,7 @@ class _ActivityTraceState extends State<ActivityTrace> {
       ),
     );
   }
-  
+
   String _formatDuration(Duration duration) {
     if (duration.inSeconds < 60) {
       return '${duration.inSeconds}s';

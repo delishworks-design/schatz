@@ -6,7 +6,7 @@ import '../../offline/services/model_downloader.dart';
 
 class OfflineModeSettings extends StatefulWidget {
   const OfflineModeSettings({super.key});
-  
+
   @override
   State<OfflineModeSettings> createState() => _OfflineModeSettingsState();
 }
@@ -15,24 +15,24 @@ class _OfflineModeSettingsState extends State<OfflineModeSettings> {
   final SecureStorage _storage = SecureStorage();
   final InferenceService _inferenceService = InferenceService();
   final ModelDownloader _downloader = ModelDownloader();
-  
+
   bool _offlineModeEnabled = false;
   String? _selectedModelId;
   List<DownloadedModel> _downloadedModels = [];
   double _temperature = 0.7;
   int _maxTokens = 1024;
-  
+
   @override
   void initState() {
     super.initState();
     _loadSettings();
   }
-  
+
   Future<void> _loadSettings() async {
     final offlineMode = await _storage.read('offline_mode');
     final selectedModel = await _storage.read('selected_offline_model');
     final models = await _downloader.getDownloadedModels();
-    
+
     if (!mounted) return;
     setState(() {
       _offlineModeEnabled = offlineMode == 'true';
@@ -40,7 +40,7 @@ class _OfflineModeSettingsState extends State<OfflineModeSettings> {
       _downloadedModels = models;
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -58,7 +58,7 @@ class _OfflineModeSettingsState extends State<OfflineModeSettings> {
       ),
     );
   }
-  
+
   Widget _buildOfflineModeToggle() {
     return SwitchListTile(
       title: const Text('Enable Offline Mode'),
@@ -71,7 +71,7 @@ class _OfflineModeSettingsState extends State<OfflineModeSettings> {
       thumbColor: WidgetStateProperty.all(AppTheme.primaryColor),
     );
   }
-  
+
   Widget _buildModelSelection() {
     return _buildSection('Model Selection', [
       if (_downloadedModels.isEmpty)
@@ -84,16 +84,16 @@ class _OfflineModeSettingsState extends State<OfflineModeSettings> {
         )
       else
         ..._downloadedModels.map((model) => RadioListTile<String>(
-          title: Text(model.name),
-          subtitle: Text('${model.size} • ${model.quantization}'),
-          value: model.id,
-          groupValue: _selectedModelId,
-          onChanged: (value) async {
-            setState(() => _selectedModelId = value);
-            await _storage.write('selected_offline_model', value ?? '');
-          },
-          activeColor: AppTheme.primaryColor,
-        )),
+              title: Text(model.name),
+              subtitle: Text('${model.size} • ${model.quantization}'),
+              value: model.id,
+              groupValue: _selectedModelId,
+              onChanged: (value) async {
+                setState(() => _selectedModelId = value);
+                await _storage.write('selected_offline_model', value ?? '');
+              },
+              activeColor: AppTheme.primaryColor,
+            )),
       if (_downloadedModels.isNotEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -105,7 +105,7 @@ class _OfflineModeSettingsState extends State<OfflineModeSettings> {
         ),
     ]);
   }
-  
+
   Widget _buildInferenceSettings() {
     return _buildSection('Inference Settings', [
       ListTile(
@@ -138,7 +138,7 @@ class _OfflineModeSettingsState extends State<OfflineModeSettings> {
       ),
     ]);
   }
-  
+
   Widget _buildInfoSection() {
     return _buildSection('About Offline Mode', [
       const Padding(
@@ -172,7 +172,7 @@ class _OfflineModeSettingsState extends State<OfflineModeSettings> {
       ),
     ]);
   }
-  
+
   Widget _buildSection(String title, List<Widget> children) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

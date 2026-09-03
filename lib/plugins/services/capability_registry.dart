@@ -37,7 +37,8 @@ class CapabilityRegistry {
   }
 
   List<Map<String, dynamic>> toOpenAITools() {
-    if (_cachedOpenAITools != null && _cachedTools == _toolRegistry.getAllTools()) {
+    if (_cachedOpenAITools != null &&
+        _cachedTools == _toolRegistry.getAllTools()) {
       return _cachedOpenAITools!;
     }
 
@@ -83,7 +84,8 @@ class CapabilityRegistry {
   }
 
   String buildSystemPromptToolsSection() {
-    if (_cachedSystemPrompt != null && _cachedTools == _toolRegistry.getAllTools()) {
+    if (_cachedSystemPrompt != null &&
+        _cachedTools == _toolRegistry.getAllTools()) {
       return _cachedSystemPrompt!;
     }
 
@@ -95,8 +97,10 @@ class CapabilityRegistry {
 
     final buffer = StringBuffer();
     buffer.writeln('## Available Tools');
-    buffer.writeln('You have access to the following tools. Use them when appropriate.');
-    buffer.writeln('To use a tool, respond with a JSON code block in this exact format:');
+    buffer.writeln(
+        'You have access to the following tools. Use them when appropriate.');
+    buffer.writeln(
+        'To use a tool, respond with a JSON code block in this exact format:');
     buffer.writeln('```tool_call');
     buffer.writeln('{"tool": "tool_name", "args": {"param": "value"}}');
     buffer.writeln('```');
@@ -115,7 +119,8 @@ class CapabilityRegistry {
           buffer.writeln('  Parameters:');
           for (final param in tool.parameters.values) {
             final req = param.required ? ' (required)' : '';
-            buffer.writeln('    - ${param.name} (${param.type.name}): ${param.description}$req');
+            buffer.writeln(
+                '    - ${param.name} (${param.type.name}): ${param.description}$req');
           }
         }
       }

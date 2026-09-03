@@ -60,7 +60,8 @@ class ToolCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: AppTheme.textSecondaryColor),
+              const Icon(Icons.chevron_right,
+                  color: AppTheme.textSecondaryColor),
             ],
           ),
         ),
@@ -106,7 +107,8 @@ class ToolCard extends StatelessWidget {
                     ),
                   ),
                   if (tool.requiresAuth)
-                    const Icon(Icons.lock, size: 16, color: AppTheme.textSecondaryColor),
+                    const Icon(Icons.lock,
+                        size: 16, color: AppTheme.textSecondaryColor),
                 ],
               ),
               const SizedBox(height: 12),
@@ -167,7 +169,8 @@ class ToolCard extends StatelessWidget {
                   ),
                 ),
                 if (param.required)
-                  const Text(' *', style: TextStyle(color: AppTheme.errorColor)),
+                  const Text(' *',
+                      style: TextStyle(color: AppTheme.errorColor)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

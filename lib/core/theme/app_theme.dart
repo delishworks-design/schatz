@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   AppTheme._();
-  
+
   static const Color primaryColor = Color(0xFFD4A843);
   static const Color secondaryColor = Color(0xFFB8942E);
   static const Color backgroundColor = Color(0xFF1A1A1A);
@@ -13,7 +13,7 @@ class AppTheme {
   static const Color textColor = Color(0xFFE8E8E8);
   static const Color textSecondaryColor = Color(0xFFA0A0A0);
   static const Color borderColor = Color(0xFF3A3A3A);
-  
+
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -43,16 +43,23 @@ class AppTheme {
       ),
       iconTheme: const IconThemeData(color: textColor),
       textTheme: const TextTheme(
-        headlineLarge: TextStyle(color: textColor, fontSize: 28, fontWeight: FontWeight.bold),
-        headlineMedium: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.w600),
-        headlineSmall: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.w600),
-        titleLarge: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.w600),
-        titleMedium: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.w500),
-        titleSmall: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w500),
+        headlineLarge: TextStyle(
+            color: textColor, fontSize: 28, fontWeight: FontWeight.bold),
+        headlineMedium: TextStyle(
+            color: textColor, fontSize: 24, fontWeight: FontWeight.w600),
+        headlineSmall: TextStyle(
+            color: textColor, fontSize: 20, fontWeight: FontWeight.w600),
+        titleLarge: TextStyle(
+            color: textColor, fontSize: 18, fontWeight: FontWeight.w600),
+        titleMedium: TextStyle(
+            color: textColor, fontSize: 16, fontWeight: FontWeight.w500),
+        titleSmall: TextStyle(
+            color: textColor, fontSize: 14, fontWeight: FontWeight.w500),
         bodyLarge: TextStyle(color: textColor, fontSize: 16),
         bodyMedium: TextStyle(color: textColor, fontSize: 14),
         bodySmall: TextStyle(color: textSecondaryColor, fontSize: 12),
-        labelLarge: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w500),
+        labelLarge: TextStyle(
+            color: textColor, fontSize: 14, fontWeight: FontWeight.w500),
         labelSmall: TextStyle(color: textSecondaryColor, fontSize: 11),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -70,7 +77,8 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: primaryColor, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         hintStyle: const TextStyle(color: textSecondaryColor),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -78,7 +86,8 @@ class AppTheme {
           backgroundColor: primaryColor,
           foregroundColor: Colors.black,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
         ),
       ),
@@ -87,7 +96,8 @@ class AppTheme {
           foregroundColor: primaryColor,
           side: const BorderSide(color: primaryColor),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
       cardTheme: CardThemeData(

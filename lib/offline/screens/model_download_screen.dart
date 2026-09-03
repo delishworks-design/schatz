@@ -4,7 +4,7 @@ import '../services/model_downloader.dart';
 
 class ModelDownloadScreen extends StatefulWidget {
   const ModelDownloadScreen({super.key});
-  
+
   @override
   State<ModelDownloadScreen> createState() => _ModelDownloadScreenState();
 }
@@ -14,13 +14,13 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
   List<AvailableModel> _availableModels = [];
   bool _isLoading = true;
   String _selectedCategory = 'all';
-  
+
   @override
   void initState() {
     super.initState();
     _loadAvailableModels();
   }
-  
+
   Future<void> _loadAvailableModels() async {
     setState(() => _isLoading = true);
     final models = await _downloader.getAvailableModels();
@@ -29,12 +29,14 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
       _isLoading = false;
     });
   }
-  
+
   List<AvailableModel> get _filteredModels {
     if (_selectedCategory == 'all') return _availableModels;
-    return _availableModels.where((m) => m.category == _selectedCategory).toList();
+    return _availableModels
+        .where((m) => m.category == _selectedCategory)
+        .toList();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -54,7 +56,7 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
       ),
     );
   }
-  
+
   Widget _buildCategoryFilter() {
     return Container(
       height: 50,
@@ -70,7 +72,7 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
       ),
     );
   }
-  
+
   Widget _buildFilterChip(String label, String category) {
     final isSelected = _selectedCategory == category;
     return Padding(
@@ -86,14 +88,15 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
       ),
     );
   }
-  
+
   Widget _buildModelList() {
     if (_filteredModels.isEmpty) {
       return const Center(
-        child: Text('No models available', style: TextStyle(color: AppTheme.textSecondaryColor)),
+        child: Text('No models available',
+            style: TextStyle(color: AppTheme.textSecondaryColor)),
       );
     }
-    
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _filteredModels.length,
@@ -103,7 +106,7 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
       },
     );
   }
-  
+
   Widget _buildModelCard(AvailableModel model) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -121,7 +124,8 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
                     color: AppTheme.primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.cloud_download, color: AppTheme.primaryColor),
+                  child: const Icon(Icons.cloud_download,
+                      color: AppTheme.primaryColor),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -156,12 +160,12 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
       ),
     );
   }
-  
+
   Widget _buildModelSpecs(AvailableModel model) {
-    final contextDisplay = model.contextLength >= 1024 
+    final contextDisplay = model.contextLength >= 1024
         ? '${(model.contextLength / 1024).toStringAsFixed(0)}K'
         : '${model.contextLength}';
-    
+
     return Row(
       children: [
         _buildSpecChip('${model.sizeGB}GB', Icons.storage),
@@ -174,7 +178,7 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
       ],
     );
   }
-  
+
   Widget _buildSpecChip(String label, IconData icon) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -198,7 +202,7 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
       ),
     );
   }
-  
+
   Widget _buildDownloadButton(AvailableModel model) {
     return SizedBox(
       width: double.infinity,
@@ -212,13 +216,14 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
       ),
     );
   }
-  
+
   void _downloadModel(AvailableModel model) async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Download Model'),
-        content: Text('Download "${model.name}"?\n\nThis may take a while depending on your connection.'),
+        content: Text(
+            'Download "${model.name}"?\n\nThis may take a while depending on your connection.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -235,7 +240,7 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
       ),
     );
   }
-  
+
   void _startDownload(AvailableModel model) async {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Starting download: ${model.name}')),

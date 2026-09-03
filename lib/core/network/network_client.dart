@@ -4,22 +4,23 @@ import '../errors/app_error.dart';
 
 class NetworkClient {
   final Dio _dio;
-  
-  NetworkClient({String? baseUrl}) : _dio = Dio(BaseOptions(
-    baseUrl: baseUrl ?? '',
-    connectTimeout: AppConstants.connectionTimeout,
-    receiveTimeout: AppConstants.receiveTimeout,
-    sendTimeout: AppConstants.connectionTimeout,
-  )) {
+
+  NetworkClient({String? baseUrl})
+      : _dio = Dio(BaseOptions(
+          baseUrl: baseUrl ?? '',
+          connectTimeout: AppConstants.connectionTimeout,
+          receiveTimeout: AppConstants.receiveTimeout,
+          sendTimeout: AppConstants.connectionTimeout,
+        )) {
     _dio.interceptors.add(LogInterceptor(
       requestBody: false,
       responseBody: false,
       error: true,
     ));
   }
-  
+
   Dio get dio => _dio;
-  
+
   Future<Response> get(
     String url, {
     Map<String, dynamic>? queryParameters,
@@ -37,7 +38,7 @@ class NetworkClient {
       throw _handleDioError(e);
     }
   }
-  
+
   Future<Response> post(
     String url, {
     dynamic data,
@@ -57,7 +58,7 @@ class NetworkClient {
       throw _handleDioError(e);
     }
   }
-  
+
   Stream<Response> postStream(
     String url, {
     dynamic data,
@@ -83,7 +84,7 @@ class NetworkClient {
       return;
     }
   }
-  
+
   AppError _handleDioError(DioException error) {
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
@@ -111,7 +112,7 @@ class NetworkClient {
         return NetworkError(technicalMessage: error.message);
     }
   }
-  
+
   void dispose() {
     _dio.close();
   }

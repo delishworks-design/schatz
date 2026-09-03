@@ -46,7 +46,8 @@ class ConversationTile extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('Delete', style: TextStyle(color: AppTheme.errorColor)),
+                child: const Text('Delete',
+                    style: TextStyle(color: AppTheme.errorColor)),
               ),
             ],
           ),
@@ -58,95 +59,106 @@ class ConversationTile extends StatelessWidget {
         return false;
       },
       child: Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+        margin: const EdgeInsets.only(bottom: 8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    conversation.pinned
+                        ? Icons.push_pin
+                        : Icons.chat_bubble_outline,
+                    color: AppTheme.primaryColor,
+                  ),
                 ),
-                child: Icon(
-                  conversation.pinned ? Icons.push_pin : Icons.chat_bubble_outline,
-                  color: AppTheme.primaryColor,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            conversation.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              conversation.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
+                          if (conversation.pinned)
+                            const Icon(Icons.push_pin,
+                                size: 14, color: AppTheme.primaryColor),
+                        ],
+                      ),
+                      if (conversation.lastMessagePreview != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          conversation.lastMessagePreview!,
+                          style: const TextStyle(
+                            color: AppTheme.textSecondaryColor,
+                            fontSize: 13,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        if (conversation.pinned)
-                          const Icon(Icons.push_pin, size: 14, color: AppTheme.primaryColor),
                       ],
-                    ),
-                    if (conversation.lastMessagePreview != null) ...[
                       const SizedBox(height: 4),
                       Text(
-                        conversation.lastMessagePreview!,
+                        '${conversation.messageCount} messages • ${_formatDate(conversation.updatedAt)}',
                         style: const TextStyle(
                           color: AppTheme.textSecondaryColor,
-                          fontSize: 13,
+                          fontSize: 11,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    const SizedBox(height: 4),
-                    Text(
-                      '${conversation.messageCount} messages • ${_formatDate(conversation.updatedAt)}',
-                      style: const TextStyle(
-                        color: AppTheme.textSecondaryColor,
-                        fontSize: 11,
-                      ),
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'pin':
+                        onPin();
+                        break;
+                      case 'archive':
+                        onArchive();
+                        break;
+                      case 'delete':
+                        onDelete();
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'pin',
+                      child: Text(conversation.pinned ? 'Unpin' : 'Pin'),
+                    ),
+                    const PopupMenuItem(
+                        value: 'archive', child: Text('Archive')),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Delete',
+                          style: TextStyle(color: AppTheme.errorColor)),
                     ),
                   ],
                 ),
-              ),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  switch (value) {
-                    case 'pin': onPin(); break;
-                    case 'archive': onArchive(); break;
-                    case 'delete': onDelete(); break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'pin',
-                    child: Text(conversation.pinned ? 'Unpin' : 'Pin'),
-                  ),
-                  const PopupMenuItem(value: 'archive', child: Text('Archive')),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Delete', style: TextStyle(color: AppTheme.errorColor)),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }

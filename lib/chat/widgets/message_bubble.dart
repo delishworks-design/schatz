@@ -16,7 +16,8 @@ class MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
@@ -120,9 +121,18 @@ class MessageBubble extends StatelessWidget {
       data: message.content,
       styleSheet: MarkdownStyleSheet(
         p: const TextStyle(color: AppTheme.textColor, fontSize: 15),
-        h1: const TextStyle(color: AppTheme.textColor, fontSize: 24, fontWeight: FontWeight.bold),
-        h2: const TextStyle(color: AppTheme.textColor, fontSize: 20, fontWeight: FontWeight.bold),
-        h3: const TextStyle(color: AppTheme.textColor, fontSize: 18, fontWeight: FontWeight.w600),
+        h1: const TextStyle(
+            color: AppTheme.textColor,
+            fontSize: 24,
+            fontWeight: FontWeight.bold),
+        h2: const TextStyle(
+            color: AppTheme.textColor,
+            fontSize: 20,
+            fontWeight: FontWeight.bold),
+        h3: const TextStyle(
+            color: AppTheme.textColor,
+            fontSize: 18,
+            fontWeight: FontWeight.w600),
         code: const TextStyle(
           backgroundColor: AppTheme.backgroundColor,
           color: AppTheme.primaryColor,
@@ -147,7 +157,8 @@ class MessageBubble extends StatelessWidget {
         Text(
           _formatTime(message.createdAt),
           style: TextStyle(
-            color: (isUser ? Colors.black : AppTheme.textSecondaryColor).withOpacity(0.6),
+            color: (isUser ? Colors.black : AppTheme.textSecondaryColor)
+                .withOpacity(0.6),
             fontSize: 10,
           ),
         ),

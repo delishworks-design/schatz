@@ -23,7 +23,7 @@ import '../models/activity_step.dart';
 class ChatScreen extends ConsumerStatefulWidget {
   final String? initialPrompt;
   final String? conversationId;
-  
+
   const ChatScreen({super.key, this.initialPrompt, this.conversationId});
 
   @override
@@ -60,12 +60,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _initialize() async {
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final conversationId = args?['conversationId'] as String?;
-    final initialPrompt = widget.initialPrompt ?? args?['initialPrompt'] as String?;
+    final initialPrompt =
+        widget.initialPrompt ?? args?['initialPrompt'] as String?;
 
     await _db.initialize();
-    
+
     final profiles = await _providerService.getProfiles();
     if (profiles.isNotEmpty) {
       _activeProvider = profiles.first;
@@ -79,7 +81,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
     _scrollToBottom();
-    
+
     if (initialPrompt != null && initialPrompt.isNotEmpty) {
       _textController.text = initialPrompt;
       Future.delayed(const Duration(milliseconds: 300), () {
@@ -117,7 +119,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              _conversation?.title ?? 'New Chat', 
+              _conversation?.title ?? 'New Chat',
               style: const TextStyle(fontSize: 16),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -138,7 +140,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             onSelected: _handleMenuAction,
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'rename', child: Text('Rename')),
-              const PopupMenuItem(value: 'clear', child: Text('Clear Messages')),
+              const PopupMenuItem(
+                  value: 'clear', child: Text('Clear Messages')),
               const PopupMenuItem(value: 'delete', child: Text('Delete Chat')),
             ],
           ),
@@ -158,7 +161,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               steps: _activitySteps,
               isExpanded: _showActivityTrace,
               tokenCount: _tokenCount,
-              elapsed: _generationStartTime != null 
+              elapsed: _generationStartTime != null
                   ? DateTime.now().difference(_generationStartTime!)
                   : null,
             ),
@@ -194,15 +197,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Text(
             'Walang laman pa... let\'s chat!',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.textSecondaryColor,
-            ),
+                  color: AppTheme.textSecondaryColor,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'Ask me anything',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSecondaryColor.withOpacity(0.7),
-            ),
+                  color: AppTheme.textSecondaryColor.withOpacity(0.7),
+                ),
           ),
         ],
       ),
@@ -213,7 +216,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(vertical: 16),
-      itemCount: _messages.length + (_currentStreamingContent.isNotEmpty ? 1 : 0),
+      itemCount:
+          _messages.length + (_currentStreamingContent.isNotEmpty ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == _messages.length) {
           return MessageBubble(
@@ -232,7 +236,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
-    
+
     if (_conversation == null) {
       _conversation = await _db.createConversation();
     }
@@ -248,7 +252,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } catch (e) {
       debugPrint('Failed to save message: $e');
     }
-    
+
     setState(() {
       _messages.add(userMessage);
       _currentStreamingContent = '';
@@ -271,7 +275,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _tokenCount = 0;
       _generationStartTime = DateTime.now();
       _activitySteps = [
-        ActivityStep(name: 'Connecting to provider...', status: ActivityStepStatus.inProgress),
+        ActivityStep(
+            name: 'Connecting to provider...',
+            status: ActivityStepStatus.inProgress),
         ActivityStep(name: 'Sending messages...'),
         ActivityStep(name: 'Receiving response...'),
         ActivityStep(name: 'Processing tokens...'),
@@ -288,7 +294,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           _showActivityTrace = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No active provider selected. Please configure a provider.')),
+          const SnackBar(
+              content: Text(
+                  'No active provider selected. Please configure a provider.')),
         );
       }
       return;
@@ -323,7 +331,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             _addActivityStep(2, ActivityStepStatus.inProgress);
             if (mounted) {
               setState(() {
-                _currentStreamingContent = 'Using tool: ${event.toolCall?.toolFullName}...';
+                _currentStreamingContent =
+                    'Using tool: ${event.toolCall?.toolFullName}...';
               });
             }
             break;
@@ -333,7 +342,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 conversationId: _conversation?.id ?? '',
                 role: MessageRole.tool,
                 content: event.toolResult!.content,
-                status: event.toolResult!.success ? MessageStatus.sent : MessageStatus.error,
+                status: event.toolResult!.success
+                    ? MessageStatus.sent
+                    : MessageStatus.error,
                 toolCallId: event.toolCall?.toolFullName,
               );
               setState(() {
@@ -382,7 +393,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             break;
         }
       }
-      
+
       _autoCollapseTrace();
     } on AuthenticationError catch (e) {
       _handleError(e.message);
@@ -396,20 +407,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _handleError('An unexpected error occurred');
     }
   }
-  
+
   void _addActivityStep(int index, ActivityStepStatus status) {
     if (index < _activitySteps.length) {
       setState(() {
         _activitySteps[index] = _activitySteps[index].copyWith(
           status: status,
-          duration: _generationStartTime != null 
+          duration: _generationStartTime != null
               ? DateTime.now().difference(_generationStartTime!)
               : null,
         );
       });
     }
   }
-  
+
   void _autoCollapseTrace() {
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted && !_isGenerating) {
@@ -439,7 +450,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _stopGeneration() {
     _isCancelled = true;
     _cancelToken?.cancel('User cancelled');
-    
+
     if (_currentStreamingContent.isNotEmpty && _conversation != null) {
       final partialResponse = ChatMessage(
         id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
@@ -517,7 +528,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 await _db.updateConversation(
                   _conversation!.copyWith(title: controller.text),
                 );
-                setState(() => _conversation = _conversation!.copyWith(title: controller.text));
+                setState(() => _conversation =
+                    _conversation!.copyWith(title: controller.text));
               }
               controller.dispose();
               Navigator.pop(context);
@@ -567,7 +579,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (provider != null) {
       final newProvider = provider.copyWith(selectedModel: model);
       setState(() => _activeProvider = newProvider);
-      
+
       if (oldProviderId != provider.id && _conversation != null) {
         _contextManager.onModelSwitch(
           conversationId: _conversation!.id,

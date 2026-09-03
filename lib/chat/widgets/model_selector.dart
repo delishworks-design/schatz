@@ -36,7 +36,9 @@ class _ModelSelectorState extends State<ModelSelector> {
     if (!mounted) return;
     setState(() {
       _profiles = profiles;
-      _selectedProfile = profiles.where((p) => p.id == widget.selectedProviderId).firstOrNull ??
+      _selectedProfile = profiles
+              .where((p) => p.id == widget.selectedProviderId)
+              .firstOrNull ??
           (profiles.isNotEmpty ? profiles.first : null);
       _isLoading = false;
     });
@@ -104,8 +106,12 @@ class _ModelSelectorState extends State<ModelSelector> {
 
                       return ListTile(
                         leading: Icon(
-                          isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                          color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondaryColor,
+                          isSelected
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                          color: isSelected
+                              ? AppTheme.primaryColor
+                              : AppTheme.textSecondaryColor,
                         ),
                         title: Text(model.name),
                         subtitle: Text(
@@ -158,23 +164,23 @@ class _ModelSelectorState extends State<ModelSelector> {
               ),
               const SizedBox(height: 16),
               ...(_profiles.map((profile) => RadioListTile<ProviderProfile>(
-                title: Text(profile.displayName),
-                subtitle: Text(
-                  '${profile.availableModels.length} models',
-                  style: const TextStyle(fontSize: 12),
-                ),
-                value: profile,
-                groupValue: _selectedProfile,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedProfile = value;
-                  });
-                  if (value != null && value.availableModels.isNotEmpty) {
-                    widget.onModelChanged(value.availableModels.first.name);
-                  }
-                  Navigator.pop(context);
-                },
-              ))),
+                    title: Text(profile.displayName),
+                    subtitle: Text(
+                      '${profile.availableModels.length} models',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    value: profile,
+                    groupValue: _selectedProfile,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedProfile = value;
+                      });
+                      if (value != null && value.availableModels.isNotEmpty) {
+                        widget.onModelChanged(value.availableModels.first.name);
+                      }
+                      Navigator.pop(context);
+                    },
+                  ))),
               const SizedBox(height: 16),
             ],
           ),
@@ -231,7 +237,8 @@ class _ModelSelectorState extends State<ModelSelector> {
                 const SizedBox(width: 4),
                 Text(
                   _selectedProfile!.displayName,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w500),
                 ),
                 const Icon(Icons.arrow_drop_down, size: 14),
               ],

@@ -6,9 +6,9 @@ import '../../providers/services/provider_service.dart';
 
 class ProviderEditorScreen extends StatefulWidget {
   final String? providerId;
-  
+
   const ProviderEditorScreen({super.key, this.providerId});
-  
+
   @override
   State<ProviderEditorScreen> createState() => _ProviderEditorScreenState();
 }
@@ -18,7 +18,7 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
   final _nameController = TextEditingController();
   final _urlController = TextEditingController();
   final _apiKeyController = TextEditingController();
-  
+
   ProviderType _selectedType = ProviderType.openai;
   String? _selectedModel;
   double _temperature = 0.7;
@@ -26,7 +26,7 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
   bool _streamingEnabled = true;
   List<String> _availableModels = [];
   bool _isLoadingModels = false;
-  
+
   @override
   void initState() {
     super.initState();
@@ -34,7 +34,7 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
       _loadProvider();
     }
   }
-  
+
   void _loadProvider() async {
     final profiles = await ProviderService().getProfiles();
     if (!mounted) return;
@@ -59,7 +59,7 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
       });
     }
   }
-  
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -67,17 +67,19 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
     _apiKeyController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text(widget.providerId != null ? 'Edit Provider' : 'Add Provider'),
+        title:
+            Text(widget.providerId != null ? 'Edit Provider' : 'Add Provider'),
         actions: [
           TextButton(
             onPressed: _save,
-            child: const Text('Save', style: TextStyle(color: AppTheme.primaryColor)),
+            child: const Text('Save',
+                style: TextStyle(color: AppTheme.primaryColor)),
           ),
         ],
       ),
@@ -237,7 +239,7 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
       ),
     );
   }
-  
+
   Widget _buildSection(String title, List<Widget> children) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,14 +260,15 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
       ],
     );
   }
-  
+
   void _updateDefaultUrl(ProviderType type) {
     switch (type) {
       case ProviderType.openai:
         _urlController.text = 'https://api.openai.com/v1';
         break;
       case ProviderType.gemini:
-        _urlController.text = 'https://generativelanguage.googleapis.com/v1beta';
+        _urlController.text =
+            'https://generativelanguage.googleapis.com/v1beta';
         break;
       case ProviderType.groq:
         _urlController.text = 'https://api.groq.com/openai/v1';
@@ -284,7 +287,7 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
         break;
     }
   }
-  
+
   void _fetchModels() async {
     if (_urlController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -292,23 +295,23 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
       );
       return;
     }
-    
+
     setState(() => _isLoadingModels = true);
-    
+
     final profile = ProviderProfile(
       displayName: _nameController.text,
       type: _selectedType,
       baseUrl: _urlController.text,
       apiKeyReference: _selectedType.name,
     );
-    
+
     try {
       final models = await ProviderService().listModels(profile);
       setState(() {
         _availableModels = models.map((m) => m.id).toList();
         _isLoadingModels = false;
       });
-      
+
       if (_availableModels.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No models found')),
@@ -325,7 +328,7 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
       );
     }
   }
-  
+
   void _save() async {
     if (_formKey.currentState!.validate()) {
       final profile = ProviderProfile(
@@ -341,17 +344,18 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
       );
       await ProviderService().saveProfile(profile);
       if (_apiKeyController.text.isNotEmpty) {
-        await SecureStorage().writeApiKey(profile.apiKeyReference, _apiKeyController.text);
+        await SecureStorage()
+            .writeApiKey(profile.apiKeyReference, _apiKeyController.text);
       }
       if (mounted) Navigator.pop(context);
     }
   }
-  
+
   void _testConnection() async {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Testing connection...')),
     );
-    
+
     final profile = ProviderProfile(
       displayName: _nameController.text,
       type: _selectedType,
@@ -359,25 +363,29 @@ class _ProviderEditorScreenState extends State<ProviderEditorScreen> {
       apiKeyReference: _selectedType.name,
       selectedModel: _selectedModel,
     );
-    
+
     if (_apiKeyController.text.isNotEmpty) {
-      await SecureStorage().writeApiKey(profile.apiKeyReference, _apiKeyController.text);
+      await SecureStorage()
+          .writeApiKey(profile.apiKeyReference, _apiKeyController.text);
     }
-    
+
     try {
       final result = await ProviderService().testConnection(profile);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result.message),
-            backgroundColor: result.success ? AppTheme.successColor : AppTheme.errorColor,
+            backgroundColor:
+                result.success ? AppTheme.successColor : AppTheme.errorColor,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Connection failed: $e'), backgroundColor: AppTheme.errorColor),
+          SnackBar(
+              content: Text('Connection failed: $e'),
+              backgroundColor: AppTheme.errorColor),
         );
       }
     }

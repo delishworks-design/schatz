@@ -33,10 +33,10 @@ class AppRouter {
   static const String pluginMarketplace = '/plugins/marketplace';
   static const String pluginSettings = '/plugin-settings';
   static const String pluginDetail = '/plugin-detail';
-  
+
   static Route<dynamic> generateRoute(RouteSettings settings) {
     final name = settings.name ?? '';
-    
+
     if (name == splash) {
       return MaterialPageRoute(builder: (_) => const SplashScreen());
     } else if (name == onboarding) {
@@ -68,7 +68,8 @@ class AppRouter {
     } else if (name == modelSelection) {
       return MaterialPageRoute(builder: (_) => const ModelSelectionScreen());
     } else if (name == offlineModels) {
-      return MaterialPageRoute(builder: (_) => const OfflineModelManagerScreen());
+      return MaterialPageRoute(
+          builder: (_) => const OfflineModelManagerScreen());
     } else if (name == modelDownload) {
       return MaterialPageRoute(builder: (_) => const ModelDownloadScreen());
     } else if (name == offlineSettings) {
@@ -91,7 +92,7 @@ class AppRouter {
         ),
       );
     }
-    
+
     return MaterialPageRoute(
       builder: (_) => Scaffold(
         body: Center(child: Text('No route defined for $name')),

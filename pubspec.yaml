@@ -45,7 +45,7 @@ dependencies:
   flutter_tts: ^3.8.3
   
   # File Selection
-  file_picker: ^6.1.1
+  file_picker: ^8.0.0
   
   # Images
   image_picker: ^1.0.7

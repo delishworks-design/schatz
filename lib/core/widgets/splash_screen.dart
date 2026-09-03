@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../routing/app_router.dart';
 import '../security/secure_storage.dart';
-import '../../providers/services/setup_bootstrap_service.dart';
 import '../../core/storage/storage_keys.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -17,9 +16,6 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
-
-  SetupReadinessResult? _readinessResult;
-  bool _isLoading = true;
 
   @override
   void initState() {
@@ -36,48 +32,21 @@ class _SplashScreenState extends State<SplashScreen>
     );
     _controller.forward();
 
-    _bootstrapAndNavigate();
-  }
-
-  Future<void> _bootstrapAndNavigate() async {
-    await Future.delayed(const Duration(milliseconds: 800));
-
-    final bootstrapService = SetupBootstrapService();
-    final result = await bootstrapService.checkReadiness();
-
-    if (!mounted) return;
-
-    setState(() {
-      _readinessResult = result;
-      _isLoading = false;
-    });
-
-    await Future.delayed(const Duration(milliseconds: 1200));
-
-    if (!mounted) return;
     _navigateAfterSplash();
   }
 
   Future<void> _navigateAfterSplash() async {
-    final storage = SecureStorage();
-    final onboardingComplete = await storage.read(StorageKeys.onboardingComplete);
-    final setupSkipped = await storage.read('setup_skipped');
+    await Future.delayed(const Duration(milliseconds: 2000));
 
     if (!mounted) return;
 
-    final result = _readinessResult;
+    final storage = SecureStorage();
+    final onboardingComplete = await storage.read(StorageKeys.onboardingComplete);
 
-    if (onboardingComplete != 'true' && setupSkipped != 'true') {
-      Navigator.pushReplacementNamed(context, AppRouter.onboarding);
-    } else if (result == null || result.status == SetupStatus.needsOnboarding) {
-      Navigator.pushReplacementNamed(context, AppRouter.onboarding);
-    } else if (result.status == SetupStatus.needsProvider ||
-        result.status == SetupStatus.needsApiKey ||
-        result.status == SetupStatus.needsModel ||
-        result.status == SetupStatus.needsConnectionCheck) {
-      Navigator.pushReplacementNamed(context, AppRouter.providerSetup);
-    } else {
+    if (onboardingComplete == 'true') {
       Navigator.pushReplacementNamed(context, AppRouter.home);
+    } else {
+      Navigator.pushReplacementNamed(context, AppRouter.onboarding);
     }
   }
 
@@ -104,10 +73,6 @@ class _SplashScreenState extends State<SplashScreen>
                 _buildTitle(),
                 const SizedBox(height: 8),
                 _buildSubtitle(),
-                if (!_isLoading) ...[
-                  const SizedBox(height: 32),
-                  _buildReadinessCard(),
-                ],
               ],
             ),
           ),
@@ -153,140 +118,5 @@ class _SplashScreenState extends State<SplashScreen>
             color: AppTheme.textSecondaryColor,
           ),
     );
-  }
-
-  Widget _buildReadinessCard() {
-    final result = _readinessResult;
-    if (result == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      width: 280,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildStatusRow(result),
-          if (result.activeProvider != null) ...[
-            const Divider(height: 24),
-            _buildProviderRow(result),
-            if (result.selectedModel != null) ...[
-              const SizedBox(height: 8),
-              _buildModelRow(result),
-            ],
-          ],
-          if (result.availableModelCount > 0) ...[
-            const SizedBox(height: 8),
-            _buildModelCountRow(result),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusRow(SetupReadinessResult result) {
-    final (statusText, statusColor, statusIcon) = _getStatusInfo(result.status);
-
-    return Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: statusColor,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Icon(statusIcon, size: 16, color: statusColor),
-        const SizedBox(width: 4),
-        Text(
-          statusText,
-          style: TextStyle(
-            color: statusColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProviderRow(SetupReadinessResult result) {
-    return Row(
-      children: [
-        const Icon(Icons.dns, size: 14, color: AppTheme.textSecondaryColor),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            result.activeProvider!.displayName,
-            style: const TextStyle(
-              color: AppTheme.textColor,
-              fontSize: 13,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildModelRow(SetupReadinessResult result) {
-    return Row(
-      children: [
-        const Icon(Icons.smart_toy, size: 14, color: AppTheme.textSecondaryColor),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            result.selectedModel!,
-            style: const TextStyle(
-              color: AppTheme.textColor,
-              fontSize: 13,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildModelCountRow(SetupReadinessResult result) {
-    return Row(
-      children: [
-        const Icon(Icons.list, size: 14, color: AppTheme.textSecondaryColor),
-        const SizedBox(width: 8),
-        Text(
-          '${result.availableModelCount} models available',
-          style: const TextStyle(
-            color: AppTheme.textSecondaryColor,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
-  (String, Color, IconData) _getStatusInfo(SetupStatus status) {
-    switch (status) {
-      case SetupStatus.ready:
-        return ('Ready', AppTheme.successColor, Icons.check_circle);
-      case SetupStatus.needsOnboarding:
-        return ('Needs Setup', Colors.orange, Icons.person_add);
-      case SetupStatus.needsProvider:
-        return ('Needs Provider', Colors.orange, Icons.dns_outlined);
-      case SetupStatus.needsApiKey:
-        return ('Needs API Key', Colors.orange, Icons.key);
-      case SetupStatus.needsModel:
-        return ('Needs Model', Colors.orange, Icons.smart_toy_outlined);
-      case SetupStatus.needsConnectionCheck:
-        return ('Needs Connection', Colors.orange, Icons.wifi_find);
-    }
   }
 }

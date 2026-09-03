@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/routing/app_router.dart';
 import '../../providers/models/provider_templates.dart';
 import '../../providers/models/provider_profile.dart';
+import '../../providers/models/starter_model_catalog.dart';
 import '../../providers/services/provider_service.dart';
 import '../../core/security/secure_storage.dart';
+import '../../core/storage/storage_keys.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -18,6 +21,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _currentPage = 0;
   String? _selectedProvider;
   final _apiKeyController = TextEditingController();
+  bool _obscureText = true;
+  ModelCostInfo? _selectedModel;
 
   @override
   void dispose() {
@@ -43,6 +48,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   _buildWelcomePage(),
                   _buildProviderPage(),
                   _buildApiKeyPage(),
+                  _buildModelPage(),
                 ],
               ),
             ),
@@ -176,10 +182,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 32),
           TextField(
             controller: _apiKeyController,
-            obscureText: true,
-            decoration: const InputDecoration(
+            obscureText: _obscureText,
+            decoration: InputDecoration(
               hintText: 'Enter your API key',
-              border: OutlineInputBorder(),
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility),
+                onPressed: () {
+                  setState(() => _obscureText = !_obscureText);
+                },
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -190,6 +202,151 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildModelPage() {
+    if (_selectedProvider == null) {
+      return const Center(
+        child: Text(
+          'Please select a provider first',
+          style: TextStyle(color: AppTheme.textSecondaryColor),
+        ),
+      );
+    }
+
+    final template = ProviderTemplates.templates.firstWhere(
+      (t) => t.id == _selectedProvider,
+    );
+    final models = StarterModelCatalog.getStarterModels(template.type);
+
+    if (_selectedModel == null && models.isNotEmpty) {
+      _selectedModel = StarterModelCatalog.getDefaultStarterModel(template.type);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.smart_toy, size: 64, color: AppTheme.primaryColor),
+          const SizedBox(height: 24),
+          const Text(
+            'Select a Model',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Choose a default model for your chats',
+            style: TextStyle(color: AppTheme.textSecondaryColor),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: ListView.builder(
+              itemCount: models.length,
+              itemBuilder: (context, index) {
+                final model = models[index];
+                final isSelected = _selectedModel?.modelId == model.modelId;
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  color: isSelected
+                      ? AppTheme.primaryColor.withOpacity(0.1)
+                      : null,
+                  child: ListTile(
+                    leading: Icon(
+                      _getCostIcon(model.costType),
+                      color: _getCostColor(model.costType),
+                    ),
+                    title: Text(model.modelName),
+                    subtitle: Text(
+                      model.description,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(Icons.check_circle,
+                            color: AppTheme.primaryColor)
+                        : _getCostBadge(model.costType),
+                    onTap: () {
+                      setState(() {
+                        _selectedModel = model;
+                      });
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Skip to use default model',
+            style: TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getCostIcon(ModelCostType costType) {
+    switch (costType) {
+      case ModelCostType.free:
+        return Icons.wifi_find;
+      case ModelCostType.starter:
+        return Icons.star;
+      case ModelCostType.trial:
+        return Icons.access_time;
+      case ModelCostType.paid:
+        return Icons.paid;
+      case ModelCostType.unknown:
+        return Icons.help;
+    }
+  }
+
+  Color _getCostColor(ModelCostType costType) {
+    switch (costType) {
+      case ModelCostType.free:
+        return AppTheme.successColor;
+      case ModelCostType.starter:
+        return AppTheme.primaryColor;
+      case ModelCostType.trial:
+        return Colors.orange;
+      case ModelCostType.paid:
+        return Colors.red;
+      case ModelCostType.unknown:
+        return AppTheme.textSecondaryColor;
+    }
+  }
+
+  Widget? _getCostBadge(ModelCostType costType) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: _getCostColor(costType).withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        _getCostLabel(costType),
+        style: TextStyle(
+          color: _getCostColor(costType),
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  String _getCostLabel(ModelCostType costType) {
+    switch (costType) {
+      case ModelCostType.free:
+        return 'Free';
+      case ModelCostType.starter:
+        return 'Starter';
+      case ModelCostType.trial:
+        return 'Trial';
+      case ModelCostType.paid:
+        return 'Paid';
+      case ModelCostType.unknown:
+        return 'Unknown';
+    }
   }
 
   Widget _buildBottomBar() {
@@ -208,11 +365,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: const Text('Back'),
             ),
           const Spacer(),
-          ...List.generate(3, (index) => _buildDot(index)),
+          ...List.generate(4, (index) => _buildDot(index)),
           const Spacer(),
           ElevatedButton(
-            onPressed: _currentPage == 2 ? _completeOnboarding : _nextPage,
-            child: Text(_currentPage == 2 ? 'Get Started' : 'Next'),
+            onPressed: _currentPage == 3 ? _completeOnboarding : _nextPage,
+            child: Text(_currentPage == 3 ? 'Get Started' : 'Next'),
           ),
         ],
       ),
@@ -243,30 +400,42 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _completeOnboarding() async {
     final storage = SecureStorage();
     final providerService = ProviderService();
-    await storage.write('onboarding_complete', 'true');
 
     if (_selectedProvider != null) {
       final template = ProviderTemplates.templates.firstWhere(
         (t) => t.id == _selectedProvider,
       );
 
+      final profileId = 'profile_${const Uuid().v4()}';
+      final apiKeyRef = StorageKeys.apiKeyReference(profileId);
+      final starterModels = StarterModelCatalog.starterModelsToProviderModels(
+        template.type,
+        profileId,
+      );
+      final defaultModel = StarterModelCatalog.getDefaultStarterModel(template.type);
+      final selectedModelId = _selectedModel?.modelId ?? defaultModel?.modelId;
+
       final profile = ProviderProfile(
+        id: profileId,
         displayName: template.displayName,
         type: template.type,
         baseUrl: template.baseUrl,
-        apiKeyReference: template.apiKeyReference,
+        apiKeyReference: apiKeyRef,
+        selectedModel: selectedModelId,
+        availableModels: starterModels,
         streamingEnabled: template.streamingEnabled,
         visionEnabled: template.visionEnabled,
       );
 
       await providerService.saveProfile(profile);
-      await storage.write('active_provider_id', profile.id);
+      await storage.write(StorageKeys.activeProviderId, profileId);
 
       if (_apiKeyController.text.isNotEmpty) {
-        await storage.writeApiKey(
-            template.apiKeyReference, _apiKeyController.text);
+        await storage.writeApiKey(apiKeyRef, _apiKeyController.text);
       }
     }
+
+    await storage.write(StorageKeys.onboardingComplete, 'true');
 
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, AppRouter.home);

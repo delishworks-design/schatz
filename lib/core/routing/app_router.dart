@@ -7,7 +7,6 @@ import '../../settings/screens/provider_editor_screen.dart';
 import '../../onboarding/screens/onboarding_screen.dart';
 import '../../providers/screens/model_scanner_screen.dart';
 import '../../providers/screens/model_selection_screen.dart';
-import '../../providers/screens/provider_setup_screen.dart';
 import '../../offline/screens/offline_model_manager_screen.dart';
 import '../../offline/screens/model_download_screen.dart';
 import '../../settings/screens/offline_mode_settings.dart';
@@ -25,7 +24,6 @@ class AppRouter {
   static const String settings = '/settings';
   static const String providerManager = '/provider-manager';
   static const String providerEditor = '/provider-editor';
-  static const String providerSetup = '/provider-setup';
   static const String modelScanner = '/model-scanner';
   static const String modelSelection = '/model-selection';
   static const String offlineModels = '/offline-models';
@@ -62,8 +60,6 @@ class AppRouter {
       return MaterialPageRoute(
         builder: (_) => ProviderEditorScreen(providerId: args?['providerId']),
       );
-    } else if (name == providerSetup) {
-      return MaterialPageRoute(builder: (_) => const ProviderSetupScreen());
     } else if (name == modelScanner) {
       final args = settings.arguments as Map<String, dynamic>?;
       return MaterialPageRoute(

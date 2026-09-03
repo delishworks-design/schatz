@@ -203,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openSetup() {
-    Navigator.pushNamed(context, AppRouter.providerSetup).then((_) {
+    Navigator.pushNamed(context, AppRouter.providerManager).then((_) {
       _checkSetupStatus();
     });
   }

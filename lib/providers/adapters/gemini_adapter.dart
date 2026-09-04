@@ -15,7 +15,7 @@ class GeminiAdapter implements BaseProviderAdapter {
 
   @override
   Future<List<ProviderModel>> listModels(ProviderProfile profile, {String? apiKeyOverride}) async {
-    final apiKey = apiKeyOverride ?? await _storage.readApiKey(profile.apiKeyReference);
+    final apiKey = apiKeyOverride ?? await _storage.read(profile.apiKeyReference);
     if (apiKey == null || apiKey.isEmpty) {
       throw AuthenticationError(message: 'API key not configured.');
     }
@@ -60,7 +60,7 @@ class GeminiAdapter implements BaseProviderAdapter {
     List<Map<String, dynamic>>? tools,
     String? apiKeyOverride,
   }) async* {
-    final apiKey = apiKeyOverride ?? await _storage.readApiKey(profile.apiKeyReference);
+    final apiKey = apiKeyOverride ?? await _storage.read(profile.apiKeyReference);
     if (apiKey == null || apiKey.isEmpty) {
       throw AuthenticationError(message: 'API key not configured.');
     }
@@ -141,7 +141,7 @@ class GeminiAdapter implements BaseProviderAdapter {
     List<Map<String, dynamic>>? tools,
     String? apiKeyOverride,
   }) async {
-    final apiKey = apiKeyOverride ?? await _storage.readApiKey(profile.apiKeyReference);
+    final apiKey = apiKeyOverride ?? await _storage.read(profile.apiKeyReference);
     if (apiKey == null || apiKey.isEmpty) {
       throw AuthenticationError(message: 'API key not configured.');
     }

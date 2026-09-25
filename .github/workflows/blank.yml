@@ -46,6 +46,21 @@ jobs:
           sdkmanager "build-tools;34.0.0"
           yes | sdkmanager --licenses
 
+      - name: Fix Gradle repositories
+        working-directory: project
+        run: |
+          if [ -f settings.gradle.kts ]; then
+            sed -i '0,/gradlePluginPortal()/s//google()\n        gradlePluginPortal()/' settings.gradle.kts
+          elif [ -f settings.gradle ]; then
+            sed -i '0,/gradlePluginPortal()/s//google()\n        gradlePluginPortal()/' settings.gradle
+          fi
+
+          echo "===== settings.gradle.kts ====="
+          cat settings.gradle.kts 2>/dev/null || true
+
+          echo "===== settings.gradle ====="
+          cat settings.gradle 2>/dev/null || true
+
       - name: Verify Android SDK
         run: |
           sdkmanager --list_installed

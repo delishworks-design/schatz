@@ -36,10 +36,11 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
 
-      - name: Install Android SDK packages
+      - name: Accept Android SDK licenses
         run: |
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
           yes | sdkmanager --licenses || true
 
       - name: Build Schatz Debug APK

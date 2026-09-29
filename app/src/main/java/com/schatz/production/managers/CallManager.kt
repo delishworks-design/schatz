@@ -8,7 +8,7 @@ import org.drinkless.tdlib.TdApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-enum class CallState { IDLE, CALLING, CONNECTING, CONNECTED, ENDED, INCOMING, RINGING, DECLINED, BUSY, FAILED, MISSED }
+enum class CallState { IDLE, CALLING, CONNECTING, MEDIA_CONNECTING, CONNECTED, ENDED, INCOMING, RINGING, DECLINED, BUSY, FAILED, MISSED }
 
 /** States after which no call is live any more. The UI must leave the call screen on these. */
 val TERMINAL_CALL_STATES = setOf(CallState.ENDED, CallState.DECLINED, CallState.MISSED, CallState.FAILED, CallState.BUSY)
@@ -63,7 +63,29 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
     private val _readyInfo = MutableStateFlow<CallReadyInfo?>(null)
     val readyInfo: StateFlow<CallReadyInfo?> = _readyInfo
 
+    /**
+     * True once the media engine is actually up and carrying frames, as opposed to TDLib merely
+     * having exchanged keys. TDLib reports CallStateReady long before tgcalls finishes its own
+     * handshake, so treating Ready as "connected" showed a running call that was silent.
+     */
+    private val _isMediaActive = MutableStateFlow(false)
+    val isMediaActive: StateFlow<Boolean> = _isMediaActive
+
+    /** The peer's microphone state, as reported by tgcalls. Drives the "muted" hint. */
+    private val _isRemoteMuted = MutableStateFlow(false)
+    val isRemoteMuted: StateFlow<Boolean> = _isRemoteMuted
+
+    /** tgcalls signal bars, 0-5. */
+    private val _signalBars = MutableStateFlow(0)
+    val signalBars: StateFlow<Int> = _signalBars
+
+    /** False when the native engine could not be started at all (no .so in the build). */
+    private val _isEngineAvailable = MutableStateFlow(false)
+    val isEngineAvailable: StateFlow<Boolean> = _isEngineAvailable
+
     private var timer: java.util.Timer? = null
+    /** Fires if tgcalls never reaches established, so the UI cannot be stuck on media connecting. */
+    private var mediaFallbackTimer: java.util.Timer? = null
     private val isOutgoingCall = java.util.concurrent.atomic.AtomicBoolean(false)
 
     fun init() {
@@ -94,8 +116,11 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
                         allowP2p = ready.allowP2p,
                         emojis = ready.emojis
                     )
-                    _callState.value = CallState.CONNECTED
-                    if (timer == null) startTimer()
+                    // Ready only means TDLib finished the key exchange. The media is not up yet,
+                    // so the call enters MEDIA_CONNECTING and only becomes CONNECTED once the
+                    // engine reports an established connection. Jumping straight to CONNECTED
+                    // here is what made a silent call look like a live one.
+                    _callState.value = CallState.MEDIA_CONNECTING
                     startMediaEngine(ready)
                 }
 
@@ -227,19 +252,66 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
     private fun startMediaEngine(ready: TdApi.CallStateReady) {
         val ctx = appContext ?: run {
             Log.w(TAG, "no context; media engine not started")
+            _isEngineAvailable.value = false
             return
         }
         val ok = TgCallsBridge.start(ctx, ready, isOutgoing = isOutgoingCall.get())
-        if (ok) {
-            CallAudioRouter.enterCall(ctx)
-        } else {
+        _isEngineAvailable.value = ok
+        if (!ok) {
             Log.w(TAG, "media engine unavailable (libtgcallsjni.so missing?) - signaling only")
+            // Without an engine there will be no media callback, so the call must not sit in
+            // MEDIA_CONNECTING forever. Fall back to the signalling-only state.
+            _callState.value = CallState.CONNECTED
+            if (timer == null) startTimer()
+            return
         }
+        CallAudioRouter.enterCall(ctx)
+
+        // tgcalls reports from a native thread; the UI flows are thread-safe but the call timer
+        // must only be started once, so post the promotion to the main thread.
+        TgCallsBridge.onMediaStateChanged = { mediaState, remoteMuted, bars ->
+            val handler = android.os.Handler(android.os.Looper.getMainLooper())
+            handler.post {
+                _isMediaActive.value = mediaState == com.schatz.production.voip.Instance.STATE_ESTABLISHED
+                _isRemoteMuted.value = remoteMuted
+                _signalBars.value = bars
+                if (_isMediaActive.value && _callState.value == CallState.MEDIA_CONNECTING) {
+                    _callState.value = CallState.CONNECTED
+                    if (timer == null) startTimer()
+                }
+            }
+        }
+
+        // The engine can start and then never reach established (blackholed UDP, a peer that
+        // never answers). Without this the call would sit on "Connecting media..." forever with
+        // no way back, so fall back to the signalling-only state and let the banner say so.
+        val fallback = java.util.Timer()
+        mediaFallbackTimer = fallback
+        fallback.schedule(object : java.util.TimerTask() {
+            override fun run() {
+                if (_callState.value == CallState.MEDIA_CONNECTING) {
+                    Log.w(TAG, "media did not establish in time; falling back to signalling-only")
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        if (_callState.value == CallState.MEDIA_CONNECTING) {
+                            _callState.value = CallState.CONNECTED
+                            if (timer == null) startTimer()
+                        }
+                    }
+                }
+            }
+        }, 30_000L)
     }
 
     private fun teardownMedia() {
+        mediaFallbackTimer?.cancel()
+        mediaFallbackTimer = null
+        TgCallsBridge.onMediaStateChanged = null
         TgCallsBridge.stop()
         CallAudioRouter.exitCall()
+        _isMediaActive.value = false
+        _isRemoteMuted.value = false
+        _signalBars.value = 0
+        _isEngineAvailable.value = false
     }
 
     fun toggleMute() {

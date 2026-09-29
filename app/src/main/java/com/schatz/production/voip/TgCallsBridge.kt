@@ -58,6 +58,20 @@ object TgCallsBridge {
     /** Fired when tgcalls reports STATE_FAILED (media path died even if signaling lives). */
     var onError: ((message: String) -> Unit)? = null
 
+    /**
+     * Fired whenever engine state, signal strength or the peer's mute flag changes, so the call UI
+     * can distinguish a live media path from a merely key-exchanged call. (state, remoteMuted, bars)
+     */
+    var onMediaStateChanged: ((state: Int, remoteMuted: Boolean, bars: Int) -> Unit)? = null
+
+    /** Latest peer-mute flag; kept so a bars-only update can still report it. */
+    @Volatile private var lastRemoteMuted = false
+    @Volatile private var lastSignalBars = 0
+
+    private fun emitMediaState(state: Int) {
+        onMediaStateChanged?.invoke(state, lastRemoteMuted, lastSignalBars)
+    }
+
     private var instance: NativeInstance? = null
     private val lock = Any()
 
@@ -200,6 +214,7 @@ object TgCallsBridge {
     private fun bind(created: NativeInstance) {
         created.onStateUpdatedCb = { s ->
             _state.value = s
+            emitMediaState(s)
             if (s == Instance.STATE_FAILED) {
                 val err = try {
                     created.getLastError()
@@ -221,8 +236,15 @@ object TgCallsBridge {
         }
         created.onRemoteMediaStateUpdatedCb = { audio, video ->
             _remoteMedia.value = audio to video
+            // AUDIO_STATE_MUTED: the peer's microphone is off. Distinguishes "you cannot hear
+            // them because they muted" from a dead audio path.
+            lastRemoteMuted = audio == Instance.AUDIO_STATE_MUTED
+            emitMediaState(_state.value)
         }
-        created.onSignalBarsUpdatedCb = { /* UI hook, Phase 3 UI */ }
+        created.onSignalBarsUpdatedCb = { bars ->
+            lastSignalBars = bars
+            emitMediaState(_state.value)
+        }
         created.onNetworkStateUpdatedCb = { connected, _ ->
             Log.d(TAG, "network connected=$connected")
         }

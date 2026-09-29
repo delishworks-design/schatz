@@ -1007,6 +1007,10 @@ fun SettingsScreen(
     }
 }
 
+/** Signal strength as a compact 0-5 bar readout, or empty when the engine reports nothing yet. */
+private fun signalBarsSuffix(bars: Int): String =
+    if (bars <= 0) "" else " • Signal $bars/5"
+
 @Composable
 fun CallScreen(callManager: CallManager, partnerName: String = "Her") {
     val callState by callManager.callState.collectAsState()
@@ -1015,6 +1019,10 @@ fun CallScreen(callManager: CallManager, partnerName: String = "Her") {
     val isSpeaker by callManager.isSpeaker.collectAsState()
     val isVideo by callManager.isVideoEnabled.collectAsState()
     val lastError by callManager.lastError.collectAsState()
+    val isMediaActive by callManager.isMediaActive.collectAsState()
+    val isRemoteMuted by callManager.isRemoteMuted.collectAsState()
+    val signalBars by callManager.signalBars.collectAsState()
+    val isEngineAvailable by callManager.isEngineAvailable.collectAsState()
     val isRinging = callState == CallState.INCOMING || callState == CallState.RINGING
     val isFailed = callState == CallState.FAILED || callState == CallState.BUSY
     val initial = partnerName.trim().firstOrNull()?.uppercase() ?: "?"
@@ -1028,6 +1036,9 @@ fun CallScreen(callManager: CallManager, partnerName: String = "Her") {
                 CallState.CALLING -> "Calling..."
                 CallState.INCOMING, CallState.RINGING -> "Incoming ${if (isVideo) "video" else "voice"} call"
                 CallState.CONNECTING -> "Connecting..."
+                // TDLib has the keys but tgcalls has not finished its own handshake. Saying
+                // "connected" here is what made a silent call look like a live one.
+                CallState.MEDIA_CONNECTING -> "Connecting media..."
                 CallState.CONNECTED -> "${duration/60}:${(duration%60).toString().padStart(2,'0')} • Private"
                 CallState.ENDED -> "Ended"
                 CallState.DECLINED -> "Declined"
@@ -1041,6 +1052,27 @@ fun CallScreen(callManager: CallManager, partnerName: String = "Her") {
             style=MaterialTheme.typography.bodySmall,
             color=if (isFailed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
         )
+
+        // Live media indicators, so a call that is up on the signalling side but silent on the
+        // media side is visible as such instead of looking perfectly healthy.
+        if (callState == CallState.MEDIA_CONNECTING || callState == CallState.CONNECTED) {
+            Spacer(Modifier.height(10.dp))
+            if (callState == CallState.MEDIA_CONNECTING) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.height(6.dp))
+            }
+            Text(
+                text = when {
+                    !isEngineAvailable -> "Media engine unavailable (no audio)"
+                    callState == CallState.MEDIA_CONNECTING -> "Securing media connection..."
+                    isRemoteMuted -> "Muted on their side"
+                    !isMediaActive -> "No media yet"
+                    else -> "Connected" + signalBarsSuffix(signalBars)
+                },
+                style=MaterialTheme.typography.labelSmall,
+                color=MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+        }
 
         Spacer(Modifier.height(40.dp))
 

@@ -88,13 +88,12 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Ensure Android SDK 34
         run: |
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
-          yes | sdkmanager --licenses > /dev/null || true
+          SM="$(find "${ANDROID_HOME}/cmdline-tools" -name sdkmanager -type f | sort -V | tail -1)"
+          echo "using $SM"
+          "$SM" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          yes | "$SM" --licenses > /dev/null || true
 
       - name: Gate (tests + lint + debug + release)
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease --stacktrace

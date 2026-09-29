@@ -36,6 +36,7 @@ jobs:
             TMessagesProj/jni/third_party/ffmpeg \
             TMessagesProj/jni/third_party/wamr \
             TMessagesProj/jni/third_party/xiph/opus \
+            TMessagesProj/jni/third_party/openh264 \
             TMessagesProj/jni/td
           du -sh TMessagesProj/jni
 

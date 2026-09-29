@@ -7,7 +7,7 @@ but without libtmessages.
 
 ## How it works
 
-CI checks out `drklo/telegram` (sparse, `TMessagesProj/jni` only), initializes 9
+CI checks out `drklo/telegram` (sparse, `TMessagesProj/jni` only), initializes 10
 submodules, then `build.sh` grafts our files over theirs:
 
 | Telegram file | Our file | Why |
@@ -30,7 +30,7 @@ The Kotlin side lives in `app/src/main/java/com/schatz/production/voip/`
 git clone --depth 1 --filter=blob:none --sparse https://github.com/drklo/telegram tg
 cd tg && git sparse-checkout set TMessagesProj/jni
 git submodule update --init --depth 1 \
-  TMessagesProj/jni/third_party/{libyuv,absl,boringssl,libvpx,dav1d,ffmpeg,wamr} \
+  TMessagesProj/jni/third_party/{libyuv,absl,boringssl,libvpx,dav1d,ffmpeg,wamr,openh264} \
   TMessagesProj/jni/third_party/xiph/opus TMessagesProj/jni/td
 # then
 native/build.sh arm64-v8a tg/TMessagesProj/jni out "$ANDROID_NDK_HOME"

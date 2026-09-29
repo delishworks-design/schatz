@@ -1465,9 +1465,11 @@ static void schatzSignalHandler(int sig, siginfo_t *info, void *context) {
         ssize_t ignored = write(fd, header, (size_t) headerLen);
         (void) ignored;
     }
-    backtrace frames[64];
-    int count = backtrace(frames, 64);
-    backtrace_symbols_fd(frames, count, fd);
+    // The local must not be called "backtrace": it would shadow the libc function of the same
+    // name, and the call below would then resolve to the array.
+    void *frames[64];
+    int count = ::backtrace(frames, 64);
+    ::backtrace_symbols_fd(frames, count, fd);
     close(fd);
     // Re-raise with the default handler so the process still dies and the system log still gets it.
     signal(sig, SIG_DFL);

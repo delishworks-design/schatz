@@ -864,6 +864,8 @@ fun SettingsScreen(
     var biometricOn by remember { mutableStateOf(securityManager.isBiometricEnabled()) }
     var storage by remember { mutableStateOf(enhancedVaultManager.getStorageUsageFormatted(0L)) }
     var cacheBytes by remember { mutableStateOf(-1L) }
+    // Cleared by the Clear report button so the card disappears without a restart.
+    var openCrashReport by remember { mutableStateOf(CrashReporter.latestReport()) }
     val biometricAvailable = remember { securityManager.isBiometricAvailable() }
     val pinSet = remember { securityManager.isPinSet() }
 
@@ -882,6 +884,28 @@ fun SettingsScreen(
                     Divider()
                     ListItem(headlineContent={Text("Vault")}, supportingContent={Text("Shared media, videos and files")}, trailingContent={Text("›")}, modifier=Modifier.clickable { onOpenVault() })
                 }
+            }
+        }
+        item {
+            // The call path runs native code, and a crash there is invisible without logcat.
+            // The last report is kept on disk and shown here so it can be read and sent.
+            val lastCrash = openCrashReport
+            if (lastCrash != null) {
+                Text("Diagnostics", style=MaterialTheme.typography.labelSmall)
+                Card(shape=RoundedCornerShape(16.dp)) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text("Last crash", style=MaterialTheme.typography.titleSmall)
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            lastCrash.take(600),
+                            style=MaterialTheme.typography.labelSmall,
+                            color=MaterialTheme.colorScheme.onSurface.copy(alpha=0.75f)
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(onClick={ CrashReporter.clear(); openCrashReport = null }) { Text("Clear report") }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
             }
         }
         item {

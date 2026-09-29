@@ -125,6 +125,9 @@ object TgCallsBridge {
             val stateFile = File(app.cacheDir, "voip_persistent_state.json").absolutePath
 
             val netType = currentNetworkType(app)
+            com.schatz.production.managers.CrashReporter.note(
+                "makeNativeInstance version=$version servers=${endpoints.size} netType=$netType key=${key.size}"
+            )
             val created = try {
                 NativeInstance.make(
                     version = version,
@@ -139,11 +142,13 @@ object TgCallsBridge {
                     aspectRatio = 1.0f,
                 )
             } catch (t: Throwable) {
+                com.schatz.production.managers.CrashReporter.note("makeNativeInstance threw ${t.javaClass.name}: ${t.message}")
                 Log.e(TAG, "makeNativeInstance failed", t)
                 _lastError.value = t.message ?: "engine start failed"
                 return false
             }
 
+            com.schatz.production.managers.CrashReporter.note("makeNativeInstance OK")
             bind(created)
             instance = created
 
@@ -203,7 +208,9 @@ object TgCallsBridge {
         val inst = instance ?: return
         instance = null
         try {
+            com.schatz.production.managers.CrashReporter.note("engine stop begin")
             inst.release()
+            com.schatz.production.managers.CrashReporter.note("engine stop done")
         } catch (t: Throwable) {
             Log.w(TAG, "release failed: $t")
         }

@@ -77,6 +77,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Installed before anything else so a crash in the TDLib/tgcalls startup path is still
+        // captured and can be read back from Settings on the next launch.
+        CrashReporter.install(this)
         securityManager = SecurityManager(this)
         // Order matters twice over. TdLibUpdateManager must exist before CallManager can be given
         // it, and callManager.init() must run before tdLib.init() starts delivering updates,

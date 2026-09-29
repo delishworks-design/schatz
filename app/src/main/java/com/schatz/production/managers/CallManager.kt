@@ -120,6 +120,7 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
                     // so the call enters MEDIA_CONNECTING and only becomes CONNECTED once the
                     // engine reports an established connection. Jumping straight to CONNECTED
                     // here is what made a silent call look like a live one.
+                    CrashReporter.note("CallStateReady outgoing=${call.isOutgoing} servers=${ready.servers.size}")
                     _callState.value = CallState.MEDIA_CONNECTING
                     startMediaEngine(ready)
                 }
@@ -155,9 +156,14 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
         // old handler listened to the global onError, so a failed getUser while idle pushed a
         // fake FAILED call into the history, and a rejected CreateCall during CALLING was
         // ignored because CALLING is "live" - the screen then hung on Calling... forever.
+        // tgcalls reports from a native thread. Teardown calls back into the engine
+        // (TgCallsBridge.stop -> stopNative), so doing it inline from that thread re-enters the
+        // native teardown it is currently running and crashes/deadlocks. Everything terminal is
+        // therefore posted to the main thread.
         tdLib.onCallError = { err ->
             val state = _callState.value
-            if (state == CallState.CALLING || state == CallState.CONNECTING || state == CallState.RINGING) {
+            if (state == CallState.CALLING || state == CallState.CONNECTING ||
+                state == CallState.MEDIA_CONNECTING || state == CallState.RINGING) {
                 _lastError.value = err.message
                 _callState.value = CallState.FAILED
                 stopTimer(preserveDuration = true)
@@ -169,15 +175,19 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
             if (callId != 0) tdLib.sendCallSignalingData(callId, data)
         }
         // tgcalls died while TDLib still thinks the call is up: surface it as a real failure
-        // instead of a silent, forever-muted call.
+        // instead of a silent, forever-muted call. Invoked on a native thread, and teardownMedia
+        // re-enters the engine's own stop, so it must never run inline here.
         TgCallsBridge.onError = { message ->
-            val state = _callState.value
-            if (state.isLive()) {
-                Log.e(TAG, "media engine failed: $message")
-                _lastError.value = message
-                _callState.value = CallState.FAILED
-                stopTimer(preserveDuration = true)
-                teardownMedia()
+            CrashReporter.note("engine error: $message")
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                val state = _callState.value
+                if (state.isLive()) {
+                    Log.e(TAG, "media engine failed: $message")
+                    _lastError.value = message
+                    _callState.value = CallState.FAILED
+                    stopTimer(preserveDuration = true)
+                    teardownMedia()
+                }
             }
         }
         tdLib.onCallSignalingData = { callId, data ->
@@ -198,6 +208,7 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
     /** Answers the ringing call. callId defaults to the id TDLib last reported. */
     fun acceptCall(callId: Int = _currentCallId.value) {
         if (callId == 0) return
+        CrashReporter.note("acceptCall id=$callId")
         _lastError.value = null
         _isIncoming.value = false
         _callState.value = CallState.CONNECTING
@@ -258,6 +269,7 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
         val ok = TgCallsBridge.start(ctx, ready, isOutgoing = isOutgoingCall.get())
         _isEngineAvailable.value = ok
         if (!ok) {
+            CrashReporter.note("media engine NOT started")
             Log.w(TAG, "media engine unavailable (libtgcallsjni.so missing?) - signaling only")
             // Without an engine there will be no media callback, so the call must not sit in
             // MEDIA_CONNECTING forever. Fall back to the signalling-only state.

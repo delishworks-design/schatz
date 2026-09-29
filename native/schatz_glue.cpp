@@ -17,6 +17,12 @@
 #include <map>
 #include <mutex>
 
+// Schatz: native crash capture (see schatzSignalHandler).
+#include <execinfo.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <unistd.h>
+
 #include "pc/video_track.h"
 #include "InstanceImpl.h"
 #include "tgcalls/VideoCaptureInterface.h"
@@ -1443,6 +1449,47 @@ Java_com_schatz_production_voip_NativeInstance_getAllVersions(JNIEnv* env, jclas
     }
     return result;
 }
+// Schatz: native crash capture. A SIGSEGV inside tgcalls/WebRTC kills the process with no
+// Java-side report, and the device this runs on has no logcat access, so the faulting frames are
+// written to a file the app can read on the next launch (CrashReporter surfaces it in Settings).
+// Async-signal-safe only: write() and a preallocated backtrace, no malloc, no JNI.
+static void schatzSignalHandler(int sig, siginfo_t *info, void *context) {
+    const char *path = "/data/data/com.schatz.production/cache/native_crash.txt";
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) {
+        _exit(sig);
+    }
+    char header[128];
+    int headerLen = snprintf(header, sizeof(header), "signal %d at addr %p\n", sig, info ? info->si_addr : nullptr);
+    if (headerLen > 0) {
+        ssize_t ignored = write(fd, header, (size_t) headerLen);
+        (void) ignored;
+    }
+    backtrace frames[64];
+    int count = backtrace(frames, 64);
+    backtrace_symbols_fd(frames, count, fd);
+    close(fd);
+    // Re-raise with the default handler so the process still dies and the system log still gets it.
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
+static void installSignalHandlers() {
+    static bool installed = false;
+    if (installed) return;
+    installed = true;
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_sigaction = schatzSignalHandler;
+    action.sa_flags = SA_SIGINFO | SA_RESTART;
+    sigemptyset(&action.sa_mask);
+    sigaction(SIGSEGV, &action, nullptr);
+    sigaction(SIGBUS, &action, nullptr);
+    sigaction(SIGILL, &action, nullptr);
+    sigaction(SIGFPE, &action, nullptr);
+    sigaction(SIGABRT, &action, nullptr);
+}
+
 // Schatz: entry point for libtgcallsjni.so. Telegram normally provides this in its
 // jni.c (whole-libtmessages JNI_OnLoad); our .so is voip-only, so we call the glue's
 // own tgvoipOnJNILoad (stores the JavaVM for DoWithJNI) and report JNI 1.6.
@@ -1451,6 +1498,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     if (vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6) != JNI_OK) {
         return JNI_ERR;
     }
+    installSignalHandlers();
     tgvoipOnJNILoad(vm, env);
     return JNI_VERSION_1_6;
 }

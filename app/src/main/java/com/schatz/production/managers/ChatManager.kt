@@ -130,6 +130,10 @@ class ChatManager(private val tdLib: TdLibUpdateManager) {
             is TdApi.MessageDocument -> content.caption.text.ifEmpty { "📄 ${content.document.fileName}" }
             is TdApi.MessageVoiceNote -> "🎤 Voice message"
             is TdApi.MessageAudio -> "🎵 ${content.audio.title.ifEmpty { "Audio" }}"
+            // TDLib posts a service message for every call. Falling through to "Unsupported
+            // message" made the chat show that literal text instead of the call outcome, and
+            // there was no way to tell a missed call from a corrupted message.
+            is TdApi.MessageCall -> callServiceText(content, senderId == myId)
             else -> "Unsupported message"
         }
         val mediaType = when(this.content) {
@@ -177,6 +181,27 @@ class ChatManager(private val tdLib: TdLibUpdateManager) {
             replyToMessageId = reply?.messageId ?: 0L,
             replyToPreview = reply?.quote?.text?.text
         )
+    }
+
+    /**
+     * Renders TDLib's call service message. A positive duration means the call connected; the
+     * discard reason explains every other outcome.
+     */
+    private fun callServiceText(content: TdApi.MessageCall, fromMe: Boolean): String {
+        val kind = if (content.isVideo) "Video call" else "Call"
+        if (content.duration > 0) {
+            val mins = content.duration / 60
+            val secs = content.duration % 60
+            val time = if (mins > 0) "$mins:${secs.toString().padStart(2, '0')}" else "${secs}s"
+            return "📞 $time • ${if (fromMe) "Outgoing $kind" else "Incoming $kind"}"
+        }
+        return when (content.discardReason) {
+            is TdApi.CallDiscardReasonMissed -> if (fromMe) "📞 Unanswered $kind" else "📞 Missed $kind"
+            is TdApi.CallDiscardReasonDeclined -> "📞 Declined $kind"
+            is TdApi.CallDiscardReasonDisconnected -> "📞 ${if (fromMe) "Cancelled" else "Disconnected"}"
+            is TdApi.CallDiscardReasonHungUp -> "📞 ${if (fromMe) "Cancelled" else "Hung up"}"
+            else -> "📞 ${if (fromMe) "Outgoing" else "Incoming"} $kind"
+        }
     }
 
     private fun applyReactions(messageId: Long, updates: Array<TdApi.MessageReaction>) {

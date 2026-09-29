@@ -77,6 +77,38 @@ object TgCallsBridge {
 
     fun isEngineAvailable(): Boolean = _loaded.value
 
+    /**
+     * The tgcalls versions to advertise to TDLib, taken from the engine itself.
+     *
+     * This has to be derived, never hand written. TDLib negotiates the call protocol by picking
+     * the highest version both sides know, and it will happily land on a version the engine
+     * cannot build an instance for - the call would then connect with no media at all. Listing
+     * only what GetAllVersions() returns makes that impossible, and means a rebuilt engine with
+     * different versions needs no change here.
+     *
+     * Sorted newest first to match the convention TDLib documents for the preferred version.
+     */
+    fun advertisedVersions(): Array<String> {
+        val native = try {
+            if (_loaded.value) NativeInstance.getAllVersions().toList() else emptyList()
+        } catch (t: Throwable) {
+            Log.w(TAG, "getAllVersions failed: $t")
+            emptyList()
+        }
+        if (native.isEmpty()) {
+            // Engine not loaded yet (local build without the CI artifact). Advertise the newest
+            // versions the shipped engine supports; signalling still works without media.
+            return arrayOf("13.0.0", "12.0.0", "9.0.0")
+        }
+        return native.sortedWith(
+            compareByDescending<String> { parts ->
+                parts.split('.').mapNotNull { it.toIntOrNull() }.firstOrNull() ?: 0
+            }.thenByDescending { parts ->
+                parts.split('.').mapNotNull { it.toIntOrNull() }.getOrElse(1) { 0 }
+            }
+        ).toTypedArray()
+    }
+
     /** Loads the native engine once. Returns false (never throws) when unavailable. */
     fun init(context: Context): Boolean {
         synchronized(lock) {

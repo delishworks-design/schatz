@@ -513,9 +513,18 @@ class TdLibUpdateManager(private val context: Context) {
     // supported tgcalls protocol versions (preferred first). The previous (2048, 1) had
     // max < min (400 on every call) and the follow-up (0, 0, null) sent no versions at all,
     // so the server had nothing to negotiate the media protocol with.
+    /**
+     * The protocol TDLib negotiates the call handshake with.
+     *
+     * The version list is read from the media engine rather than written by hand. TDLib picks the
+     * newest version both sides support, so advertising a version the engine cannot actually
+     * build (the old list carried 5.0.0 and 2.7.7, which this tgcalls build does not support) let
+     * the negotiation land on it - a call that connected but could never carry audio. Deriving it
+     * from GetAllVersions() also means a rebuilt engine needs no edit here.
+     */
     private fun callProtocol(): TdApi.CallProtocol = TdApi.CallProtocol(
         true, true, 65, 92,
-        arrayOf("13.0.0", "12.0.0", "9.0.0", "8.0.0", "7.0.0", "5.0.0", "2.7.7")
+        com.schatz.production.voip.TgCallsBridge.advertisedVersions()
     )
 
     fun createCall(userId: Long, isVideo: Boolean) { client?.send(TdApi.CreateCall(userId, callProtocol(), isVideo)) { res -> Log.d(TAG, "CreateCall: $res"); reportCallError("CreateCall", res) } }

@@ -1,6 +1,9 @@
 package com.schatz.production.ui
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
@@ -34,6 +37,7 @@ import com.schatz.production.BuildConfig
 import com.schatz.production.R
 import com.schatz.production.managers.*
 import com.schatz.production.models.*
+import com.schatz.production.voip.TgCallsBridge
 import org.drinkless.tdlib.TdApi
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -847,6 +851,45 @@ fun VaultScreenWithSync(syncManager: SharedVaultSyncManager, myId: Long, partner
     }
 }
 
+/**
+ * Everything needed to tell a silent call from a dead one, as plain text to be pasted elsewhere.
+ *
+ * The device has no logcat, so this is the only window into what the media engine did. It
+ * deliberately carries no personal data: no name, no phone number, no chat id - just the engine
+ * state, the call trail and the crash, which is what actually identifies a failure.
+ */
+private fun buildDiagnosticsBundle(): String {
+    val engineState = TgCallsBridge.state.value
+    val stateName = when (engineState) {
+        0 -> "idle"
+        com.schatz.production.voip.Instance.STATE_WAIT_INIT -> "WAIT_INIT"
+        com.schatz.production.voip.Instance.STATE_WAIT_INIT_ACK -> "WAIT_INIT_ACK"
+        com.schatz.production.voip.Instance.STATE_ESTABLISHED -> "ESTABLISHED"
+        com.schatz.production.voip.Instance.STATE_FAILED -> "FAILED"
+        com.schatz.production.voip.Instance.STATE_RECONNECTING -> "RECONNECTING"
+        else -> "unknown"
+    }
+    val remote = TgCallsBridge.remoteMedia.value
+    return buildString {
+        appendLine("=== Schatz diagnostics ===")
+        appendLine("time: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())}")
+        appendLine("app: ${com.schatz.production.BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+        appendLine()
+        appendLine("-- media engine --")
+        appendLine("library loaded: ${TgCallsBridge.isEngineAvailable()}")
+        appendLine("advertised versions: ${TgCallsBridge.advertisedVersions().joinToString(", ")}")
+        appendLine("engine state: $engineState ($stateName)")
+        appendLine("remote audio/video state: $remote")
+        appendLine("engine last error: ${TgCallsBridge.lastError.value ?: "(none)"}")
+        appendLine()
+        appendLine("-- call trail --")
+        appendLine(CrashReporter.breadcrumbsSnapshot())
+        appendLine()
+        appendLine("-- last crash --")
+        appendLine(CrashReporter.latestReport() ?: "(no crash recorded)")
+    }
+}
+
 @Composable
 fun SettingsScreen(
     securityManager: SecurityManager,
@@ -887,27 +930,64 @@ fun SettingsScreen(
             }
         }
         item {
-            // The call path runs native code, and a crash there is invisible without logcat.
-            // The last report is kept on disk and shown here so it can be read and sent.
-            val lastCrash = openCrashReport
-            if (lastCrash != null) {
-                Text("Diagnostics", style=MaterialTheme.typography.labelSmall)
+            // The call path runs native code, and a crash there is invisible without logcat, so the
+            // report is kept on disk and shown here. The card is deliberately always present: a
+            // call that connects but carries no audio never crashes at all, and the engine state
+            // below is the only evidence of how far it got.
+            val engineState = TgCallsBridge.state.collectAsState().value
+            val engineLoaded = TgCallsBridge.isEngineAvailable()
+            Text("Diagnostics", style=MaterialTheme.typography.labelSmall)
                 Card(shape=RoundedCornerShape(16.dp)) {
                     Column(Modifier.padding(12.dp)) {
-                        Text("Last crash", style=MaterialTheme.typography.titleSmall)
-                        Spacer(Modifier.height(6.dp))
                         Text(
-                            lastCrash.take(600),
+                            if (openCrashReport != null) "Last crash" else "No crash recorded",
+                            style=MaterialTheme.typography.titleSmall
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        // The engine state is the quick read: state 3 (ESTABLISHED) means the media
+                        // path is up and the call should be audible, 4 (FAILED) means it died, and
+                        // 1 or 2 mean it is still handshaking.
+                        Text(
+                            "tgcalls engine: ${if (engineLoaded) "loaded" else "NOT loaded"}\n" +
+                                "engine state: $engineState\n" +
+                                "versions: ${TgCallsBridge.advertisedVersions().joinToString(", ")}",
                             style=MaterialTheme.typography.labelSmall,
                             color=MaterialTheme.colorScheme.onSurface.copy(alpha=0.75f)
                         )
+                        if (openCrashReport != null) {
+                            Spacer(Modifier.height(8.dp))
+                            // Head and tail, not a blind character cut: the stack trace is at the
+                            // end of the report, so truncating from the start lost exactly the part
+                            // that identifies the failure.
+                            Text(
+                                openCrashReport!!.let {
+                                    if (it.length <= 900) it else it.take(450) + "\n\n...[cut]...\n\n" + it.takeLast(450)
+                                },
+                                style=MaterialTheme.typography.labelSmall,
+                                color=MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f)
+                            )
+                        }
                         Spacer(Modifier.height(8.dp))
-                        Button(onClick={ CrashReporter.clear(); openCrashReport = null }) { Text("Clear report") }
+                        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = {
+                                val bundle = buildDiagnosticsBundle()
+                                // The platform clipboard, not LocalClipboardManager: deprecated in
+                                // the Compose version this app builds against.
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                clipboard?.setPrimaryClip(ClipData.newPlainText("Schatz diagnostics", bundle))
+                                android.widget.Toast.makeText(context, "Diagnostics copied", android.widget.Toast.LENGTH_SHORT).show()
+                            }) { Text("Copy diagnostics") }
+                            if (openCrashReport != null) {
+                                OutlinedButton(onClick = {
+                                    CrashReporter.clear()
+                                    openCrashReport = null
+                                }) { Text("Clear") }
+                            }
+                        }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
             }
-        }
         item {
             Text("Account", style=MaterialTheme.typography.labelSmall)
             Card(shape=RoundedCornerShape(16.dp)) {

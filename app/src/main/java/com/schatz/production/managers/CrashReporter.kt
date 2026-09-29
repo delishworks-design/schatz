@@ -48,6 +48,15 @@ object CrashReporter {
         }
     }
 
+    /**
+     * The markers recorded so far, newest last. Read on demand rather than only at crash time: a
+     * call that connects but carries no audio never crashes, and this trail is the only record of
+     * how far it got.
+     */
+    fun breadcrumbsSnapshot(): String = synchronized(breadcrumbs) {
+        if (breadcrumbs.isEmpty()) "(none recorded)" else breadcrumbs.joinToString("\n")
+    }
+
     fun latestReport(): String? {
         val ctx = appContext ?: return null
         // A SIGSEGV in tgcalls is written by the native signal handler; a Java crash by the
@@ -72,6 +81,7 @@ object CrashReporter {
 
     fun clear() {
         val ctx = appContext ?: return
+        synchronized(breadcrumbs) { breadcrumbs.clear() }
         File(ctx.cacheDir, FILE_NAME).delete()
         File(ctx.cacheDir, "native_crash.txt").delete()
     }

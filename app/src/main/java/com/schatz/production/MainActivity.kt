@@ -88,6 +88,12 @@ class MainActivity : ComponentActivity() {
         // it, and callManager.init() must run before tdLib.init() starts delivering updates,
         // otherwise any call update arriving in that window is dropped on a null listener.
         tdLib = TdLibUpdateManager(this)
+        // Load the media engine up front, not lazily on the first call. The call protocol we hand
+        // TDLib is built from the versions the engine reports, so it has to be loaded before the
+        // first CreateCall/AcceptCall. Doing it here also means a broken or missing .so shows up in
+        // the Diagnostics report instead of surfacing as a silent call halfway through a test.
+        val engineReady = com.schatz.production.voip.TgCallsBridge.init(applicationContext)
+        CrashReporter.note("tgcalls engine loaded=$engineReady")
         callManager = CallManager(tdLib, applicationContext)
         callManager.init()
         tdLib.init()

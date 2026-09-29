@@ -321,7 +321,15 @@ jlong getInstanceHolderId(JNIEnv *env, jobject obj) {
 }
 
 InstanceHolder *getInstanceHolder(JNIEnv *env, jobject obj) {
-    return reinterpret_cast<InstanceHolder *>(getInstanceHolderId(env, obj));
+    // Every extern reads the holder out of the Java object's nativePtr field. That pointer is
+    // 0 until makeNativeInstance() returns, and stale after stopNative() deleted the holder, so
+    // an unguarded reinterpret_cast here segfaults the app. Return null instead and let the
+    // call sites bail out.
+    jlong holderId = getInstanceHolderId(env, obj);
+    if (holderId == 0) {
+        return nullptr;
+    }
+    return reinterpret_cast<InstanceHolder *>(holderId);
 }
 
 jint throwNewJavaException(JNIEnv *env, const char *className, const char *message) {
@@ -696,6 +704,7 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_com_schatz_production_voip_GroupCal
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_setJoinResponsePayload(JNIEnv *env, jobject obj, jstring payload) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->groupNativeInstance == nullptr) {
         return;
     }
@@ -706,6 +715,7 @@ JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_setJoinRes
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_prepareForStream(JNIEnv *env, jobject obj, jboolean isRtmpStream) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->groupNativeInstance == nullptr) {
         return;
     }
@@ -722,6 +732,7 @@ void onEmitJoinPayload(const std::shared_ptr<PlatformContext>& platformContext, 
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_resetGroupInstance(JNIEnv *env, jobject obj, jboolean set, jboolean disconnect) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->groupNativeInstance == nullptr) {
         return;
     }
@@ -750,6 +761,7 @@ void broadcastRequestedSinks(InstanceHolder *instance) {
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_setNoiseSuppressionEnabled(JNIEnv *env, jobject obj, jboolean enabled) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->groupNativeInstance == nullptr) {
         return;
     }
@@ -760,6 +772,7 @@ JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_setNoiseSu
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_schatz_production_voip_NativeInstance_addIncomingVideoOutput(JNIEnv *env, jobject obj, jint quality, jstring endpointId, jobjectArray ssrcGroups, jobject remoteSink, jlong userId) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return 0; }
     if (instance->groupNativeInstance == nullptr) {
         return 0;
     }
@@ -793,6 +806,7 @@ JNIEXPORT jlong JNICALL Java_com_schatz_production_voip_NativeInstance_addIncomi
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_removeIncomingVideoOutput(JNIEnv *env, jobject obj, jlong nativeRemoteSink) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->groupNativeInstance == nullptr) {
         return;
     }
@@ -812,6 +826,7 @@ JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_removeInco
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_setVideoEndpointQuality(JNIEnv *env, jobject obj, jstring endpointId, jint quality) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->groupNativeInstance == nullptr) {
         return;
     }
@@ -848,8 +863,13 @@ JNIEXPORT jlong JNICALL Java_com_schatz_production_voip_NativeInstance_makeNativ
     jbyteArray valueByteArray = encryptionKeyObject.getByteArrayField("value");
     auto *valueBytes = (uint8_t *) env->GetByteArrayElements(valueByteArray, nullptr);
     auto encryptionKeyValue = std::make_shared<std::array<uint8_t, 256>>();
-    memcpy(encryptionKeyValue->data(), valueBytes, 256);
-    env->ReleaseByteArrayElements(valueByteArray, (jbyte *) valueBytes, JNI_ABORT);
+    // The key array must be at least 256 bytes; the Kotlin side enforces this, but a short
+    // array here would overread the pinned buffer and corrupt the stack.
+    if (valueBytes) {
+        size_t keyLength = std::min<size_t>(256, (size_t) env->GetArrayLength(valueByteArray));
+        memcpy(encryptionKeyValue->data(), valueBytes, keyLength);
+        env->ReleaseByteArrayElements(valueByteArray, (jbyte *) valueBytes, JNI_ABORT);
+    }
 
     std::shared_ptr<VideoCaptureInterface> videoCapture;
     if (videoCapturer) {
@@ -966,10 +986,19 @@ JNIEXPORT jlong JNICALL Java_com_schatz_production_voip_NativeInstance_makeNativ
             endpoint.port = static_cast<uint16_t>(endpointObject.getIntField("port"));
             endpoint.type = parseEndpointType(env, endpointObject.getIntField("type"));
             jbyteArray peerTag = endpointObject.getByteArrayField("peerTag");
-            if (peerTag && env->GetArrayLength(peerTag)) {
-                jbyte *peerTagBytes = env->GetByteArrayElements(peerTag, nullptr);
-                memcpy(endpoint.peerTag, peerTagBytes, 16);
-                env->ReleaseByteArrayElements(peerTag, peerTagBytes, JNI_ABORT);
+            if (peerTag) {
+                // TDLib sends an 8-byte peer tag; the fixed field is 16 bytes. The upstream
+                // memcpy(.., 16) overread the shorter Java array, which segfaulted the moment
+                // a reflector endpoint was processed - i.e. on every call accept.
+                jsize peerTagLength = env->GetArrayLength(peerTag);
+                if (peerTagLength > 0) {
+                    jbyte *peerTagBytes = env->GetByteArrayElements(peerTag, nullptr);
+                    if (peerTagBytes) {
+                        size_t copyLength = std::min<size_t>(sizeof(endpoint.peerTag), (size_t) peerTagLength);
+                        memcpy(endpoint.peerTag, peerTagBytes, copyLength);
+                        env->ReleaseByteArrayElements(peerTag, peerTagBytes, JNI_ABORT);
+                    }
+                }
             }
            descriptor.endpoints.push_back(std::move(endpoint));
         }
@@ -1026,6 +1055,7 @@ JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_setNetwork
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_setMuteMicrophone(JNIEnv *env, jobject obj, jboolean muteMicrophone) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->nativeInstance != nullptr) {
         instance->nativeInstance->setMuteMicrophone(muteMicrophone);
     } else if (instance->groupNativeInstance != nullptr) {
@@ -1036,6 +1066,7 @@ JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_setMuteMic
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_setVolume(JNIEnv *env, jobject obj, jint ssrc, jdouble volume) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->groupNativeInstance != nullptr) {
         instance->groupNativeInstance->setVolume(ssrc, volume);
     }
@@ -1110,12 +1141,16 @@ JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_stopNative
     if (instance == nullptr || instance->nativeInstance == nullptr) {
         return;
     }
+    // The holder is deleted from the stop callback below, so the Java field must be cleared
+    // first: any later JNI call would otherwise reinterpret_cast a dangling pointer.
+    env->SetLongField(obj, env->GetFieldID(NativeInstanceClass, "nativePtr", "J"), 0);
     instance->nativeInstance->stop([instance](const FinalState& finalState) {
         JNIEnv *env = webrtc::AttachCurrentThreadIfNeeded();
         jobject globalRef = ((AndroidContext *) instance->_platformContext.get())->getJavaPeerInstance();
         const std::string &path = tgvoip::jni::JavaStringToStdString(env, JavaObject(env, globalRef).getStringField("persistentStateFilePath"));
         savePersistentState(path.c_str(), finalState.persistentState);
         env->CallVoidMethod(globalRef, env->GetMethodID(NativeInstanceClass, "onStop", "(Lcom/schatz/production/voip/Instance$FinalState;)V"), asJavaFinalState(env, finalState));
+        env->DeleteLocalRef(globalRef);
         delete instance;
     });
 }
@@ -1123,6 +1158,7 @@ JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_stopNative
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_stopGroupNative(JNIEnv *env, jobject obj) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->groupNativeInstance == nullptr) {
         return;
     }
@@ -1170,6 +1206,7 @@ JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_onStreamPa
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_onMediaDescriptionAvailable(JNIEnv *env, jobject obj, jlong taskPtr, jobjectArray arr) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->groupNativeInstance == nullptr) {
         return;
     }
@@ -1212,6 +1249,7 @@ JNIEXPORT jlong JNICALL Java_com_schatz_production_voip_NativeInstance_createVid
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_activateVideoCapturer(JNIEnv *env, jobject obj, jlong videoCapturer) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->nativeInstance) {
         instance->nativeInstance->setVideoCapture(nullptr);
     } else if (instance->groupNativeInstance) {
@@ -1225,6 +1263,7 @@ JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_activateVi
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_clearVideoCapturer(JNIEnv *env, jobject obj) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->nativeInstance) {
         instance->nativeInstance->setVideoCapture(nullptr);
         if (instance->_screenVideoCapture != nullptr) {
@@ -1266,6 +1305,7 @@ JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_setVideoSt
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_switchCamera(JNIEnv *env, jobject obj, jboolean front) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->_videoCapture == nullptr) {
         return;
     }
@@ -1275,6 +1315,7 @@ JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_switchCame
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_schatz_production_voip_NativeInstance_hasVideoCapturer(JNIEnv *env, jobject obj) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return JNI_FALSE; }
     if (instance->_videoCapture == nullptr) {
         return JNI_FALSE;
     }
@@ -1326,6 +1367,7 @@ JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_setupOutgo
     auto sharedCapture = *captureHolder;
 
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->_videoCapture == nullptr) {
         instance->_videoCapture = sharedCapture;
     }
@@ -1356,6 +1398,7 @@ JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_onSignalin
 extern "C"
 JNIEXPORT void JNICALL Java_com_schatz_production_voip_NativeInstance_onRequestTimeComplete(JNIEnv *env, jobject obj, jlong taskPtr, jlong currentTime) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->groupNativeInstance == nullptr) {
         return;
     }
@@ -1372,6 +1415,7 @@ JNIEXPORT void JNICALL
 Java_com_schatz_production_voip_NativeInstance_setConferenceCallId(JNIEnv *env, jobject obj,
                                                                     jlong call_id) {
     InstanceHolder *instance = getInstanceHolder(env, obj);
+    if (instance == nullptr) { return; }
     if (instance->groupNativeInstance == nullptr) {
         DEBUG_D("setConferenceCallId failed, instance doesn't contain groupNativeInstance");
         return;

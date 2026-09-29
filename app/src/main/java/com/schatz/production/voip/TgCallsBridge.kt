@@ -152,6 +152,20 @@ object TgCallsBridge {
 
             val app = context.applicationContext
             val version = ready.protocol?.libraryVersions?.firstOrNull() ?: DEFAULT_VERSION
+            // TDLib returns the version it negotiated for this call, and the engine must be able
+            // to build exactly that one. If it is not in the registry the native layer has no
+            // instance to hand back, which used to surface as a null dereference (a native abort)
+            // with nothing to read. Refuse it here with the actual numbers instead.
+            val buildable = advertisedVersions()
+            com.schatz.production.managers.CrashReporter.note(
+                "negotiated version=$version buildable=${buildable.joinToString(",")}"
+            )
+            if (version !in buildable) {
+                Log.e(TAG, "negotiated version $version is not buildable; engine supports ${buildable.joinToString(",")}")
+                _lastError.value =
+                    "call protocol mismatch: server asked for engine version $version"
+                return false
+            }
             val config = buildConfig(app, ready)
             val endpoints = buildEndpoints(ready.servers)
             val stateFile = File(app.cacheDir, "voip_persistent_state.json").absolutePath

@@ -886,6 +886,14 @@ private fun buildDiagnosticsBundle(): String {
         appendLine(CrashReporter.breadcrumbsSnapshot())
         appendLine()
         appendLine("-- last crash --")
+        val nativeAge = CrashReporter.nativeCrashAgeMillis()
+        if (nativeAge != null) {
+            val minutes = nativeAge / 60000
+            appendLine(
+                if (minutes < 1) "native crash recorded less than a minute ago (current run)"
+                else "native crash recorded $minutes minute(s) ago - likely from an earlier run, not this one"
+            )
+        }
         appendLine(CrashReporter.latestReport() ?: "(no crash recorded)")
     }
 }

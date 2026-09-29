@@ -72,6 +72,18 @@ object CrashReporter {
         return javaCrash()
     }
 
+    /**
+     * When the native handler last recorded a fault, or null if there is none. The file survives
+     * until it is cleared, so without this a crash from an earlier run reads exactly like one that
+     * just happened.
+     */
+    fun nativeCrashAgeMillis(): Long? {
+        val ctx = appContext ?: return null
+        val file = File(ctx.cacheDir, "native_crash.txt")
+        if (!file.exists()) return null
+        return runCatching { System.currentTimeMillis() - file.lastModified() }.getOrNull()
+    }
+
     private fun javaCrash(): String? {
         val ctx = appContext ?: return null
         val file = File(ctx.cacheDir, FILE_NAME)

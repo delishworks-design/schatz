@@ -18,6 +18,7 @@
 #include <mutex>
 
 // Schatz: native crash capture (see schatzSignalHandler).
+#include <ctime>
 #include <fcntl.h>
 #include <signal.h>
 #include <unistd.h>
@@ -1022,6 +1023,17 @@ JNIEXPORT jlong JNICALL Java_com_schatz_production_voip_NativeInstance_makeNativ
 
     auto *holder = new InstanceHolder;
     holder->nativeInstance = tgcalls::Meta::Create(v, std::move(descriptor));
+    // Meta::Create returns nullptr when the requested version is not in its registry, and every
+    // call below dereferences the returned unique_ptr. Dereferencing null is undefined behaviour
+    // that ends in abort() on bionic, which is the "signal 6" this app kept reporting from a call.
+    // Bail out with a Java exception instead, so the failure is a readable message on the UI
+    // rather than a native crash with no explanation.
+    if (!holder->nativeInstance) {
+        delete holder;
+        throwNewJavaIllegalArgumentException(
+            env, ("tgcalls cannot build version " + v).c_str());
+        return 0;
+    }
     holder->_videoCapture = videoCapture;
     holder->_platformContext = platformContext;
     // Schatz: null-guard — audio-only calls pass no remote sink; constructing a
@@ -1461,12 +1473,15 @@ static void schatzSignalHandler(int sig, siginfo_t *info, void *context) {
     if (fd < 0) {
         _exit(sig);
     }
-    char header[192];
+    // time() is async-signal-safe, and without a stamp on the file a crash from an earlier run is
+    // indistinguishable from the one that just happened - which is exactly the confusion the
+    // diagnostics report has to avoid.
+    char header[256];
     int headerLen = snprintf(header, sizeof(header),
         "signal %d at addr %p\n"
-        "This is inside the native voice/video engine (tgcalls/WebRTC), not app code.\n"
-        "Thread: %s\n",
-        sig, info ? info->si_addr : nullptr, "native engine thread");
+        "epoch: %ld\n"
+        "This is inside the native voice/video engine (tgcalls/WebRTC), not app code.\n",
+        sig, info ? info->si_addr : nullptr, (long) time(nullptr));
     if (headerLen > 0) {
         ssize_t ignored = write(fd, header, (size_t) headerLen);
         (void) ignored;

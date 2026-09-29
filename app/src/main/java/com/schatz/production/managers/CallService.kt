@@ -44,8 +44,11 @@ class CallService : Service() {
 
         // Keep TDLib alive during call
         // Handle app minimized, backgrounded, screen locked
-
-        return START_STICKY
+        //
+        // NOT_STICKY: a sticky restart after the process dies would rebuild the "ongoing call"
+        // notification with no call behind it, and the service has no way to tell. The caller
+        // (MainActivity) restarts it whenever a call actually goes live.
+        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

@@ -153,14 +153,22 @@ class FileManager(private val context: Context, private val tdLib: TdLibUpdateMa
         current[fileId] = transfer
         _downloads.value = current
 
-        tdLib.downloadFile(fileId, 32) { file ->
+        tdLib.downloadFile(fileId, 32, onProgress = { file ->
+            // LocalFile has no total; the size lives on TdApi.File.
+            val total = file.size.coerceAtLeast(1L)
+            val progress = ((file.local?.downloadedSize ?: 0L) * 100 / total).toInt().coerceIn(0, 99)
+            val updated = _downloads.value.toMutableMap()
+            updated[fileId] = transfer.copy(progress = progress)
+            _downloads.value = updated
+            onProgress(progress)
+        }, onComplete = { file ->
             if(file.local?.isDownloadingCompleted == true) {
                 val updated = _downloads.value.toMutableMap()
                 updated[fileId] = transfer.copy(localPath = file.local.path, progress = 100, isCompleted = true)
                 _downloads.value = updated
                 onComplete(file.local.path)
             }
-        }
+        })
     }
 
     fun cancelUpload(fileId: Int) {
@@ -188,12 +196,9 @@ class FileManager(private val context: Context, private val tdLib: TdLibUpdateMa
     }
 
     fun getFilePreview(fileId: Int, callback: (String)->Unit) {
-        // Get file path for preview
-        tdLib.downloadFile(fileId, 1) { file ->
-            if(file.local?.path?.isNotEmpty() == true) {
-                callback(file.local.path)
-            }
-        }
+        tdLib.downloadFile(fileId, 1, onComplete = { file ->
+            if(file.local?.path?.isNotEmpty() == true) callback(file.local.path)
+        })
     }
 
     fun clearCompleted() {

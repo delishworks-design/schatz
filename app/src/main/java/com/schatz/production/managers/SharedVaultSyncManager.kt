@@ -43,8 +43,12 @@ class SharedVaultSyncManager(private val context: Context, private val tdLib: Td
     private var partnerId: Long = 0
     private var listenersRegistered = false
 
-    private fun sharedDir(): File = File(context.filesDir, "vault_shared").apply { mkdirs() }
-    private fun manifestFile(): File = File(sharedDir(), "manifest.txt")
+    // Scoped per account so one signed-in user cannot inherit another's shared vault from disk.
+    private fun sharedDir(): File = File(context.filesDir, "vault_shared_$myId").apply { mkdirs() }
+    private fun manifestFile(): File = File(sharedDir(), MANIFEST_NAME)
+
+    // Ownership metadata. It is never a user-visible file and never a delete target.
+    private val MANIFEST_NAME = "manifest.txt"
 
     fun init(myId: Long, chatId: Long, partnerId: Long = 0L) {
         synchronized(lock) {
@@ -163,30 +167,36 @@ class SharedVaultSyncManager(private val context: Context, private val tdLib: Td
 
     private fun receiveFile(tdFile: TdApi.File, id: String, name: String, ownerId: Long, message: TdApi.Message, meta: SharedVaultCodec.ShareMeta) {
         _syncState.value = SyncState.SYNCING
-        tdLib.downloadFile(tdFile.id, 32) { downloaded ->
-            val localPath = downloaded.local?.path
-            if(downloaded.local?.isDownloadingCompleted != true || localPath.isNullOrEmpty()) {
-                Log.e(TAG, "Shared vault download incomplete for $name")
-                _syncState.value = SyncState.FAILED
-                return@downloadFile
+        // onComplete fires only once the transfer actually finishes, so an in-flight download is no
+        // longer reported as a failure and abandoned.
+        tdLib.downloadFile(
+            tdFile.id, 32,
+            onProgress = { _syncState.value = SyncState.SYNCING },
+            onComplete = { downloaded ->
+                val localPath = downloaded.local?.path
+                if(downloaded.local?.isDownloadingCompleted != true || localPath.isNullOrEmpty()) {
+                    Log.e(TAG, "Shared vault download incomplete for $name")
+                    _syncState.value = SyncState.FAILED
+                    return@downloadFile
+                }
+                val dest = File(sharedDir(), name)
+                try { File(localPath).copyTo(dest, overwrite = true) }
+                catch (e: Exception) {
+                    Log.e(TAG, "Failed to store shared vault file $name", e)
+                    _syncState.value = SyncState.FAILED
+                    return@downloadFile
+                }
+                upsert(SharedVaultCodec.Entry(
+                    id = id,
+                    name = name,
+                    ownerId = ownerId,
+                    sharedWithId = myId,
+                    timestamp = if(meta.timestamp != 0L) meta.timestamp else message.date * 1000L,
+                    messageId = message.id
+                ))
+                _syncState.value = SyncState.SYNCED
             }
-            val dest = File(sharedDir(), name)
-            try { File(localPath).copyTo(dest, overwrite = true) }
-            catch (e: Exception) {
-                Log.e(TAG, "Failed to store shared vault file $name", e)
-                _syncState.value = SyncState.FAILED
-                return@downloadFile
-            }
-            upsert(SharedVaultCodec.Entry(
-                id = id,
-                name = name,
-                ownerId = ownerId,
-                sharedWithId = myId,
-                timestamp = if(meta.timestamp != 0L) meta.timestamp else message.date * 1000L,
-                messageId = message.id
-            ))
-            _syncState.value = SyncState.SYNCED
-        }
+        )
     }
 
     // Owner deleted the message => access revoked for both sides.
@@ -272,6 +282,11 @@ class SharedVaultSyncManager(private val context: Context, private val tdLib: Td
         val entry = synchronized(lock) { entries.find { it.id == fileId } }
         if(entry == null) { onComplete(); return }
 
+        // Gated on the same access rule that decides visibility, so an id that canAccess() would
+        // hide cannot still be used to destroy the other user's bytes.
+        if(!SharedVaultCodec.canAccess(entry.ownerId, entry.sharedWithId, myId)) { onComplete(); return }
+        if(entry.name == MANIFEST_NAME) { onComplete(); return }
+
         File(sharedDir(), entry.name).delete()
         val iOwnIt = entry.ownerId == myId
         synchronized(lock) {
@@ -289,8 +304,13 @@ class SharedVaultSyncManager(private val context: Context, private val tdLib: Td
     }
 
     fun renameInShared(fileId: String, newName: String, onComplete: () -> Unit = {}) {
-        val entry = synchronized(lock) { entries.find { it.id == fileId } } ?: return
+        val entry = synchronized(lock) { entries.find { it.id == fileId } }
+        // Previously an unknown id returned without ever calling onComplete, leaving any caller
+        // awaiting the callback hanging forever.
+        if(entry == null) { onComplete(); return }
+        if(!SharedVaultCodec.canAccess(entry.ownerId, entry.sharedWithId, myId)) { onComplete(); return }
         val clean = SharedVaultCodec.sanitizeName(newName)
+        if(clean == MANIFEST_NAME) { onComplete(); return }
         val oldFile = File(sharedDir(), entry.name)
         val newFile = File(sharedDir(), clean)
         if(!oldFile.renameTo(newFile)) { onComplete(); return }

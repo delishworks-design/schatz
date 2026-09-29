@@ -1,8 +1,11 @@
 package com.schatz.production.managers
 
+import android.util.Log
 import org.drinkless.tdlib.TdApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+
+private const val TAG = "SchatzConnection"
 
 /**
  * Identifies the signed-in account and, when the user pairs one, the partner.
@@ -43,17 +46,32 @@ class ConnectionManager(private val tdLib: TdLibUpdateManager, private val secur
                 updateLastSeen(user)
             }
         }
-        loadMe()
+        // The one-shot loadMe() in init() ran before TDLib was authorized, so on a fresh
+        // install getMe came back as an error, myId stayed 0, and the pairing screen - which is
+        // gated on myId - never appeared. Re-run it every time we actually become authorized.
+        tdLib.onAuthState = { state ->
+            if (state is TdApi.AuthorizationStateReady) loadMe()
+        }
     }
 
     private fun loadMe() {
         _state.value = ConnectionState.CONNECTING
-        tdLib.getMe { user ->
-            _me.value = user
-            _myId.value = user.id
-            // Restore a previously paired partner before declaring the app unusable.
-            restorePartner()
-        }
+        tdLib.getMe(
+            onSuccess = { user ->
+                _me.value = user
+                _myId.value = user.id
+                _pairingError.value = null
+                // Restore a previously paired partner before declaring the app unusable.
+                restorePartner()
+            },
+            onFailure = { msg ->
+                // TDLib gave up (not a transient "not ready"). Surface it instead of spinning
+                // forever; the pairing screen shows this and offers Retry.
+                Log.e(TAG, "getMe failed: $msg")
+                _pairingError.value = "Could not load your Telegram account: $msg"
+                _state.value = ConnectionState.ERROR
+            }
+        )
     }
 
     private fun restorePartner() {
@@ -116,10 +134,24 @@ class ConnectionManager(private val tdLib: TdLibUpdateManager, private val secur
 
     private fun createPrivateChat(userId: Long) {
         _state.value = ConnectionState.CONNECTING
-        tdLib.createPrivateChat(userId) { chat ->
-            _privateChat.value = chat
-            _state.value = ConnectionState.CONNECTED
-        }
+        tdLib.createPrivateChat(userId,
+            onSuccess = { chat ->
+                _privateChat.value = chat
+                _pairingError.value = null
+                _state.value = ConnectionState.CONNECTED
+            },
+            onFailure = { msg ->
+                // The partner is linked but the chat never opened. Unlink so the user lands back
+                // on the pairing screen with a reason, instead of a header that says
+                // "Connecting..." with no chat underneath it.
+                Log.e(TAG, "createPrivateChat($userId) failed: $msg")
+                _pairingError.value = "Could not open the chat with your partner: $msg"
+                _partnerId.value = 0L
+                _partner.value = null
+                _privateChat.value = null
+                _state.value = ConnectionState.AUTH_REQUIRED
+                securityManager.getSharedPreferencesEditor()?.remove(KEY_PARTNER_ID)?.apply()
+            })
     }
 
     private fun updateLastSeen(user: TdApi.User) {

@@ -266,12 +266,68 @@ class TdLibUpdateManager(private val context: Context) {
     fun logout() { client?.send(TdApi.LogOut()) {} }
 
     // USERS
-    fun getMe(callback: (TdApi.User)->Unit) { client?.send(TdApi.GetMe()) { res -> if(res is TdApi.User) callback(res) } }
+    /**
+     * Sends a request that TDLib refuses until the client is authorized ("Not ready" / 401).
+     * A one-shot send was the reason a fresh install sat on "Connecting..." forever: the very
+     * first getMe ran before AuthorizationStateReady, TDLib answered with an error, the error
+     * was swallowed, and nothing ever asked again.
+     */
+    private fun <T : TdApi.Object> sendWhenAuthorized(
+        request: TdApi.Function<T>,
+        label: String,
+        onResult: (T) -> Unit,
+        onFailure: (String) -> Unit,
+        attempt: Int = 0
+    ) {
+        val c = client
+        if (c == null) {
+            onFailure("TDLib client is not running")
+            return
+        }
+        c.send(request) { res ->
+            when {
+                res is TdApi.Error -> {
+                    // 401 Unauthorized / "Not ready": the request is legitimate, TDLib just cannot
+                    // answer it yet. Retry briefly; anything else is a real failure.
+                    val transientCode = res.code == 401 || res.message.contains("Not ready", true) ||
+                        res.message.contains("Too many requests", true)
+                    if (transientCode && attempt < 20) {
+                        val delayMs = minOf(400L * (attempt + 1), 3000L)
+                        Log.d(TAG, "$label not ready (${res.code} ${res.message}), retry in ${delayMs}ms")
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            sendWhenAuthorized(request, label, onResult, onFailure, attempt + 1)
+                        }, delayMs)
+                    } else {
+                        Log.e(TAG, "$label failed permanently: ${res.code} ${res.message}")
+                        onFailure(res.message)
+                    }
+                }
+                else -> onResult(res as T)
+            }
+        }
+    }
+
+    fun getMe(onSuccess: (TdApi.User)->Unit, onFailure: (String)->Unit) {
+        sendWhenAuthorized(TdApi.GetMe(), "getMe", { onSuccess(it) }, { msg ->
+            Log.e(TAG, "getMe failed: $msg")
+            onFailure(msg)
+        })
+    }
     fun getContacts(callback: (List<Long>)->Unit) { client?.send(TdApi.GetContacts()) { res -> if(res is TdApi.Users) callback(res.userIds.toList()) } }
-    fun getUser(userId: Long, callback: (TdApi.User)->Unit) { client?.send(TdApi.GetUser(userId)) { res -> if(res is TdApi.User) callback(res); reportError(res) } }
+    fun getUser(userId: Long, onSuccess: (TdApi.User)->Unit, onFailure: (String)->Unit = {}) {
+        sendWhenAuthorized(TdApi.GetUser(userId), "getUser($userId)", { onSuccess(it) }, { msg ->
+            Log.e(TAG, "getUser($userId) failed: $msg"); onFailure(msg)
+        })
+    }
 
     // CHATS
-    fun createPrivateChat(userId: Long, callback: (TdApi.Chat)->Unit) { client?.send(TdApi.CreatePrivateChat(userId, false)) { res -> if(res is TdApi.Chat) callback(res); reportError(res) } }
+    fun createPrivateChat(userId: Long, onSuccess: (TdApi.Chat)->Unit, onFailure: (String)->Unit = {}) {
+        // Same "not ready yet" wall as getUser: without the retry the pair succeeded but the
+        // chat never opened, and the header sat on "Connecting..." with no way out.
+        sendWhenAuthorized(TdApi.CreatePrivateChat(userId, false), "createPrivateChat($userId)",
+            { onSuccess(it) },
+            { msg -> Log.e(TAG, "createPrivateChat($userId) failed: $msg"); onFailure(msg) })
+    }
     fun getChat(chatId: Long, callback: (TdApi.Chat)->Unit) { client?.send(TdApi.GetChat(chatId)) { res -> if(res is TdApi.Chat) callback(res) } }
 
     // PAIRING
@@ -280,33 +336,24 @@ class TdLibUpdateManager(private val context: Context) {
     fun searchPublicChat(username: String, onSuccess: (TdApi.User)->Unit, onFailure: (String)->Unit) {
         val handle = username.trim().removePrefix("@")
         if (handle.isEmpty()) { onFailure("Enter a username or user id"); return }
-        client?.send(TdApi.SearchPublicChat(handle)) { res ->
-            when {
-                res is TdApi.Chat -> {
-                    val private = res.type as? TdApi.ChatTypePrivate
-                    if (private == null) onFailure("'$handle' is not a personal account")
-                    else getUser(private.userId, onSuccess) { onFailure("Found '$handle' but could not load the profile") }
-                }
-                res is TdApi.Error && res.code == 400 -> onFailure("No public account named '$handle'")
-                res is TdApi.Error -> onFailure("Lookup failed: ${res.message}")
-                else -> onFailure("Lookup failed")
-            }
-        }
+        sendWhenAuthorized(TdApi.SearchPublicChat(handle), "searchPublicChat($handle)", { chat ->
+            val private = chat.type as? TdApi.ChatTypePrivate
+            if (private == null) onFailure("'$handle' is not a personal account")
+            else getUser(private.userId, onSuccess) { onFailure("Found '$handle' but could not load the profile") }
+        }, { msg ->
+            // A 400 from SearchPublicChat is a real "no such public account"; anything else is
+            // reported verbatim.
+            if (msg.contains("not found", true) || msg.contains("Chat not found", true))
+                onFailure("No public account named '$handle'")
+            else onFailure("Lookup failed: $msg")
+        })
     }
 
     fun findUserById(rawId: String, onSuccess: (TdApi.User)->Unit, onFailure: (String)->Unit) {
         val id = rawId.trim().removePrefix("@").toLongOrNull()
         if (id == null || id <= 0L) { onFailure("That is not a valid user id"); return }
-        getUser(id, onSuccess) { onFailure("No user with id $id") }
-    }
-
-    fun getUser(userId: Long, onSuccess: (TdApi.User)->Unit, onFailure: (String)->Unit = {}) {
-        client?.send(TdApi.GetUser(userId)) { res ->
-            when (res) {
-                is TdApi.User -> onSuccess(res)
-                is TdApi.Error -> onFailure("User $userId not found (${res.message})")
-                else -> onFailure("User $userId not found")
-            }
+        getUser(id, onSuccess) { msg ->
+            if (msg.contains("not found", true)) onFailure("No user with id $id") else onFailure("Lookup failed: $msg")
         }
     }
 

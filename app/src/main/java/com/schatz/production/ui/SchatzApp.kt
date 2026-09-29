@@ -88,9 +88,11 @@ fun SchatzApp(
         return
     }
 
-    // 4. Pairing gate. The implicit "first contact" fallback is gone, so an unpaired account has
-    //    no chat at all until a partner is chosen deliberately.
-    if (myId != 0L && partnerId == 0L) {
+    // 4. Pairing gate. Gated on being authorized (not on myId != 0): getMe needs a live TDLib,
+    //    and a fresh install once sat on "Connecting..." forever because the screen it unlocks
+    //    was itself waiting on the very request that had failed. An authorized-but-unpaired
+    //    account must always be able to reach the screen that fixes it.
+    if (authState is TdApi.AuthorizationStateReady && partnerId == 0L) {
         PairPartnerScreen(connectionManager) { connectionManager.retry() }
         return
     }

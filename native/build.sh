@@ -45,6 +45,14 @@ cmake -S "$JNI_DIR" -B "$BUILD_DIR" \
 
 cmake --build "$BUILD_DIR" --parallel "$(nproc)" --target tgcallsjni
 
+# Strip debug/symbol bulk (LTO + -g make the .so ~220MB unstripped; packaging does
+# not re-strip, so do it here - dynamic JNI exports are preserved).
+STRIP="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
+if [[ -x "$STRIP" ]]; then
+    "$STRIP" --strip-unneeded "$BUILD_DIR/libtgcallsjni.so"
+    echo "stripped: $(stat -c%s "$BUILD_DIR/libtgcallsjni.so") bytes"
+fi
+
 mkdir -p "$OUT_DIR/$ABI"
 cp "$BUILD_DIR/libtgcallsjni.so" "$OUT_DIR/$ABI/libtgcallsjni.so"
 echo "OK: $OUT_DIR/$ABI/libtgcallsjni.so ($(stat -c%s "$OUT_DIR/$ABI/libtgcallsjni.so") bytes)"

@@ -34,6 +34,10 @@
 
 using namespace tgcalls;
 
+// Schatz: defined near the bottom with the signal handler. Declared up here because
+// makeNativeInstance - which is far above it - is where the tracing matters most.
+static void schatzTrace(const char *step);
+
 const auto RegisterTag = Register<InstanceImpl>();
 const auto RegisterTagV2_4_0_1 = Register<InstanceV2Impl>();
 const auto RegisterTagV2_4_1_2 = Register<InstanceV2ReferenceImpl>();

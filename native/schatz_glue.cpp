@@ -860,7 +860,9 @@ JNIEXPORT jlong JNICALL Java_com_schatz_production_voip_NativeInstance_makeNativ
     jlong videoCapturer,
     jfloat aspectRatio
 ) {
+    schatzTrace("makeNativeInstance: enter");
     initWebRTC(env);
+    schatzTrace("makeNativeInstance: initWebRTC done");
 
     JavaObject configObject(env, config);
     JavaObject encryptionKeyObject(env, encryptionKey);
@@ -877,12 +879,15 @@ JNIEXPORT jlong JNICALL Java_com_schatz_production_voip_NativeInstance_makeNativ
         env->ReleaseByteArrayElements(valueByteArray, (jbyte *) valueBytes, JNI_ABORT);
     }
 
+    schatzTrace("makeNativeInstance: key read");
+
     std::shared_ptr<VideoCaptureInterface> videoCapture;
     if (videoCapturer) {
         auto* captureHolder = reinterpret_cast<std::shared_ptr<tgcalls::VideoCaptureInterface>*>(videoCapturer);
         videoCapture = *captureHolder;
     }
 
+    schatzTrace("makeNativeInstance: before AndroidContext");
     std::shared_ptr<PlatformContext> platformContext;
     if (videoCapture) {
         platformContext = getVideoCapturePlatformContext(videoCapture.get());
@@ -894,6 +899,7 @@ JNIEXPORT jlong JNICALL Java_com_schatz_production_voip_NativeInstance_makeNativ
     } else {
         platformContext = std::make_shared<AndroidContext>(env, instanceObj, nullptr, false);
     }
+    schatzTrace("makeNativeInstance: AndroidContext done");
 
     Descriptor descriptor = {
             .config = Config{
@@ -1021,8 +1027,10 @@ JNIEXPORT jlong JNICALL Java_com_schatz_production_voip_NativeInstance_makeNativ
 
     readPersistentState(tgvoip::jni::JavaStringToStdString(env, persistentStateFilePath).c_str(), descriptor.persistentState);
 
+    schatzTrace("makeNativeInstance: before Meta::Create");
     auto *holder = new InstanceHolder;
     holder->nativeInstance = tgcalls::Meta::Create(v, std::move(descriptor));
+    schatzTrace("makeNativeInstance: Meta::Create returned");
     // Meta::Create returns nullptr when the requested version is not in its registry, and every
     // call below dereferences the returned unique_ptr. Dereferencing null is undefined behaviour
     // that ends in abort() on bionic, which is the "signal 6" this app kept reporting from a call.
@@ -1045,8 +1053,11 @@ JNIEXPORT jlong JNICALL Java_com_schatz_production_voip_NativeInstance_makeNativ
         holder->_sink = nullptr;
         holder->nativeInstance->setIncomingVideoOutput(holder->_sink);
     }
+    schatzTrace("makeNativeInstance: video output set");
     holder->nativeInstance->setNetworkType(parseNetworkType(networkType));
+    schatzTrace("makeNativeInstance: network type set");
     holder->nativeInstance->setRequestedVideoAspect(aspectRatio);
+    schatzTrace("makeNativeInstance: done");
     return reinterpret_cast<jlong>(holder);
 }
 extern "C"
@@ -1460,6 +1471,23 @@ Java_com_schatz_production_voip_NativeInstance_getAllVersions(JNIEnv* env, jclas
     }
     return result;
 }
+// Schatz: native step tracing. makeNativeInstance aborts (SIGABRT) somewhere inside tgcalls and
+// execinfo is stubbed on Android, so there is no backtrace to work with. This writes a marker at
+// each step so the diagnostics report shows the last line that ran before the abort. Appended
+// (not truncated) and opened per call, so it survives the process death.
+static void schatzTrace(const char *step) {
+    int fd = open("/data/data/com.schatz.production/cache/native_trace.txt",
+                  O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd < 0) return;
+    char line[160];
+    int n = snprintf(line, sizeof(line), "%ld %s\n", (long) time(nullptr), step);
+    if (n > 0) {
+        ssize_t ignored = write(fd, line, (size_t) n);
+        (void) ignored;
+    }
+    close(fd);
+}
+
 // Schatz: native crash capture. A SIGSEGV inside tgcalls/WebRTC kills the process with no
 // Java-side report, and the device this runs on has no logcat access, so the fault details are
 // written to a file the app can read on the next launch (CrashReporter surfaces it in Settings).
@@ -1486,6 +1514,9 @@ static void schatzSignalHandler(int sig, siginfo_t *info, void *context) {
         ssize_t ignored = write(fd, header, (size_t) headerLen);
         (void) ignored;
     }
+    // Same reason as the step trace: the last thing that ran is the only clue available, since
+    // execinfo is stubbed on Android and there is no backtrace to print.
+    schatzTrace("!!! signal handler ran - process is aborting now");
     close(fd);
     // Re-raise with the default handler so the process still dies and the system log still gets it.
     signal(sig, SIG_DFL);

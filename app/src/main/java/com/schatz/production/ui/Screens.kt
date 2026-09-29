@@ -885,6 +885,9 @@ private fun buildDiagnosticsBundle(): String {
         appendLine("-- call trail --")
         appendLine(CrashReporter.breadcrumbsSnapshot())
         appendLine()
+        appendLine("-- native engine steps (last run that started an instance) --")
+        appendLine(CrashReporter.nativeTrace() ?: "(no native trace recorded)")
+        appendLine()
         appendLine("-- last crash --")
         val nativeAge = CrashReporter.nativeCrashAgeMillis()
         if (nativeAge != null) {

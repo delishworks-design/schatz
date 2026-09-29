@@ -115,12 +115,27 @@ object CrashReporter {
         return runCatching { file.readText() }.getOrNull()
     }
 
+    /**
+     * Steps the native engine recorded while building a call instance. makeNativeInstance aborts
+     * inside tgcalls and there is no backtrace on Android, so the last marker written is the only
+     * evidence of how far it got.
+     */
+    fun nativeTrace(): String? {
+        val ctx = appContext ?: return null
+        val file = File(ctx.cacheDir, "native_trace.txt")
+        if (!file.exists()) return null
+        val lines = runCatching { file.readLines() }.getOrNull() ?: return null
+        val last = lines.takeLast(14)
+        return if (last.isEmpty()) null else last.joinToString("\n")
+    }
+
     fun clear() {
         val ctx = appContext ?: return
         synchronized(breadcrumbs) { breadcrumbs.clear() }
         File(ctx.cacheDir, FILE_NAME).delete()
         File(ctx.cacheDir, TRAIL_FILE).delete()
         File(ctx.cacheDir, "native_crash.txt").delete()
+        File(ctx.cacheDir, "native_trace.txt").delete()
     }
 
     private fun writeReport(threadName: String, throwable: Throwable) {

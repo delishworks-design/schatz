@@ -45,7 +45,9 @@ jobs:
 
       - name: Check JNI exports
         run: |
-          llvm-nm -D --defined-only "native-out/${{ matrix.abi }}/libtgcallsjni.so" | tee /tmp/nm.txt
+          NDK="$(ls -d "${ANDROID_HOME:-/opt/android-sdk}/ndk"/*/ | sort -V | tail -1)"
+          NM="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
+          "$NM" -D --defined-only "native-out/${{ matrix.abi }}/libtgcallsjni.so" | tee /tmp/nm.txt
           grep -q "Java_com_schatz_production_voip_NativeInstance_makeNativeInstance" /tmp/nm.txt
           grep -q "JNI_OnLoad" /tmp/nm.txt
           echo "JNI exports OK"

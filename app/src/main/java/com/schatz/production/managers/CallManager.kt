@@ -133,6 +133,10 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
                 else -> null
             }
             if (incoming != null) {
+                // Every state transition is recorded before the dedupe check, so a call that dies
+                // mid-handshake still shows the last state it actually reached. This trail is the
+                // only evidence of how far a call got, since a native abort leaves no stack.
+                CrashReporter.note("call id=${call.id} ${call.state.javaClass.simpleName} outgoing=${call.isOutgoing}")
                 // A different call id than the one we have been tracking: start over.
                 if (dedupeCallId != call.id) {
                     dedupeCallId = call.id
@@ -261,6 +265,7 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
         answeredCallId = -1
         isOutgoingCall.set(true)
         _callState.value = CallState.CALLING
+        CrashReporter.note("startCall userId=$userId video=$isVideo")
         tdLib.createCall(userId, isVideo)
     }
 

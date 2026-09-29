@@ -213,10 +213,27 @@ fun SchatzApp(
                     },
                     actions = {
                         val partner = connectionManager.partner.collectAsState().value
-                        IconButton(onClick = { partner?.let { callManager.startCall(it.id, false) } }) {
+                        // A call button that silently does nothing is the worst kind of bug.
+                        // The partner is null when their private chat could not be opened, and
+                        // the old `partner?.let {}` swallowed the tap with no error, no log and
+                        // nothing on screen. It now says why, and records it in the trail.
+                        fun startCallFromHeader(isVideo: Boolean) {
+                            val target = partner
+                            if (target == null) {
+                                CrashReporter.note("call button tapped but partner is null (video=$isVideo)")
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Open the chat with your partner first",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                                return
+                            }
+                            callManager.startCall(target.id, isVideo)
+                        }
+                        IconButton(onClick = { startCallFromHeader(false) }) {
                             Icon(painterResource(R.drawable.ic_call_24), contentDescription = "Call")
                         }
-                        IconButton(onClick = { partner?.let { callManager.startCall(it.id, true) } }) {
+                        IconButton(onClick = { startCallFromHeader(true) }) {
                             Icon(painterResource(R.drawable.ic_video_call_24), contentDescription = "Video call")
                         }
                         IconButton(onClick = { selected = Nav.SETTINGS }) {

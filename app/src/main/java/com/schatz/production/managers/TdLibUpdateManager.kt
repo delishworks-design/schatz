@@ -124,6 +124,7 @@ class TdLibUpdateManager(private val context: Context) {
             is TdApi.UpdateAuthorizationState -> {
                 _authState.value = obj.authorizationState
                 onAuthState?.invoke(obj.authorizationState)
+                CrashReporter.note("auth: ${obj.authorizationState.javaClass.simpleName}")
                 _connectionState.value = when(obj.authorizationState) {
                     is TdApi.AuthorizationStateReady -> ConnectionState.CONNECTED
                     is TdApi.AuthorizationStateWaitPhoneNumber,

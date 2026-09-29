@@ -28,6 +28,17 @@ object CrashReporter {
 
     fun install(context: Context) {
         appContext = context.applicationContext
+        // Rehydrate the trail from the previous run. A native abort ends the process without
+        // running any cleanup, so the markers that explain the crash are only on disk.
+        synchronized(breadcrumbs) {
+            breadcrumbs.clear()
+            runCatching {
+                File(appContext!!.cacheDir, TRAIL_FILE).readLines()
+                    .filter { it.isNotBlank() }
+                    .takeLast(40)
+                    .forEach { breadcrumbs.add(it) }
+            }
+        }
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
@@ -40,11 +51,24 @@ object CrashReporter {
         }
     }
 
-    /** Records a short marker (max 20 kept) that lands in the next crash report. */
+    /**
+     * Records a short marker that lands in the crash report and in the copyable bundle.
+     *
+     * Written to disk on every call, not just held in memory. A SIGABRT inside tgcalls kills the
+     * process immediately, so an in-memory trail would be gone by the time the user came back to
+     * read it - which is precisely the case this has to capture.
+     */
     fun note(message: String) {
+        val line = "${System.currentTimeMillis()} $message"
         synchronized(breadcrumbs) {
-            breadcrumbs.add("${System.currentTimeMillis()} $message")
-            while (breadcrumbs.size > 20) breadcrumbs.removeAt(0)
+            breadcrumbs.add(line)
+            // Generous enough to hold a whole session (startup, then a full call lifecycle) - the
+            // trail is the only record of how far a call got, so it must not roll over too early.
+            while (breadcrumbs.size > 40) breadcrumbs.removeAt(0)
+        }
+        val ctx = appContext ?: return
+        runCatching {
+            File(ctx.cacheDir, TRAIL_FILE).appendText(line + "\n")
         }
     }
 
@@ -95,6 +119,7 @@ object CrashReporter {
         val ctx = appContext ?: return
         synchronized(breadcrumbs) { breadcrumbs.clear() }
         File(ctx.cacheDir, FILE_NAME).delete()
+        File(ctx.cacheDir, TRAIL_FILE).delete()
         File(ctx.cacheDir, "native_crash.txt").delete()
     }
 
@@ -122,4 +147,7 @@ object CrashReporter {
     }
 
     private const val FILE_NAME = "last_crash.txt"
+
+    /** On-disk call trail. Survives the process death that a native abort causes. */
+    private const val TRAIL_FILE = "call_trail.txt"
 }

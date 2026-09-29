@@ -75,6 +75,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var callEnhancedManager: CallEnhancedManager
     private val pendingCallAction = PendingCallAction()
 
+    /** Whether this activity actually started CallService, so it only stops what it started. */
+    private var callServiceStarted = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Installed before anything else so a crash in the TDLib/tgcalls startup path is still
@@ -131,11 +134,18 @@ class MainActivity : ComponentActivity() {
                 if (callState.isLive()) {
                     // Android 12+ can refuse a background start; the full-screen intent brings
                     // this activity forward anyway, so a refusal is not fatal.
-                    try { startForegroundService(serviceIntent) } catch (t: Throwable) {
+                    try {
+                        startForegroundService(serviceIntent)
+                        callServiceStarted = true
+                    } catch (t: Throwable) {
                         android.util.Log.w("SchatzMain", "CallService start refused: $t")
                     }
-                } else {
+                } else if (callServiceStarted) {
+                    // Only ever stop a service this activity actually started. An unsolicited
+                    // stopService() for a service that was never promoted is what produced
+                    // ForegroundServiceDidNotStartInTimeException in the first place.
                     stopService(serviceIntent)
+                    callServiceStarted = false
                 }
             }
 

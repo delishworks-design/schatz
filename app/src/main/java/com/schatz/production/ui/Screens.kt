@@ -660,7 +660,7 @@ fun CallHistoryScreen(callHistoryManager: CallHistoryManager, callManager: CallM
                 items(history) { item ->
                     ListItem(
                         headlineContent={ Text("${if(item.type == CallType.INCOMING) "Incoming" else if(item.type == CallType.OUTGOING) "Outgoing" else item.type.name} • ${if(item.media == CallMedia.VIDEO) "Video" else "Audio"}") },
-                        supportingContent={ Text("${java.text.SimpleDateFormat("MMM dd, HH:mm").format(java.util.Date(item.timestamp))} • ${if(item.duration > 0) "${item.duration/60}:${(item.duration%60).toString().padStart(2,'0')}" else item.type.name}") },
+                        supportingContent={ Text("${java.text.SimpleDateFormat("MMM dd, HH:mm").format(java.util.Date(item.timestamp))} • ${if(item.duration > 0) "${item.duration/60}:${(item.duration%60).toString().padStart(2,'0')}" else item.type.name}" + " • " + item.partnerName) },
                         leadingContent={
                             Surface(shape=RoundedCornerShape(20.dp), color=when(item.type) {
                                 CallType.MISSED, CallType.FAILED -> MaterialTheme.colorScheme.errorContainer
@@ -1047,14 +1047,31 @@ fun CallScreen(callManager: CallManager, partnerName: String = "Her") {
     val isRemoteMuted by callManager.isRemoteMuted.collectAsState()
     val signalBars by callManager.signalBars.collectAsState()
     val isEngineAvailable by callManager.isEngineAvailable.collectAsState()
+    val isAnswered by callManager.isAnswered.collectAsState()
+    val isIncoming by callManager.isIncoming.collectAsState()
     val isRinging = callState == CallState.INCOMING || callState == CallState.RINGING
     val isFailed = callState == CallState.FAILED || callState == CallState.BUSY
+    val isOutgoing = !isIncoming && callState != CallState.IDLE
+    // Answer/Decline disappear the moment the call is answered, from either path. The notification
+    // shade action and this screen's button used to both fire for one tap, which sent TDLib a
+    // second AcceptCall for a call it had already accepted; that rejection is what crashed the app.
+    val canAnswer = isRinging && !isAnswered
     val initial = partnerName.trim().firstOrNull()?.uppercase() ?: "?"
 
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement=Arrangement.Center, horizontalAlignment=Alignment.CenterHorizontally) {
         Surface(shape=RoundedCornerShape(28.dp), color=MaterialTheme.colorScheme.primary, modifier=Modifier.size(96.dp)) { Box(contentAlignment=Alignment.Center) { Text(initial, style=MaterialTheme.typography.headlineLarge, color=MaterialTheme.colorScheme.onPrimary) } }
         Spacer(Modifier.height(16.dp))
         Text(partnerName, style=MaterialTheme.typography.titleLarge)
+        // A stable direction line. Folding this into the status text below would make it blink
+        // away exactly when the state is changing fastest, which is when direction is being
+        // checked.
+        if (callState != CallState.IDLE) {
+            Text(
+                if (isOutgoing) "Outgoing call" else "Incoming call",
+                style=MaterialTheme.typography.labelSmall,
+                color=MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f)
+            )
+        }
         Text(
             text = when(callState) {
                 CallState.CALLING -> "Calling..."
@@ -1100,8 +1117,9 @@ fun CallScreen(callManager: CallManager, partnerName: String = "Her") {
 
         Spacer(Modifier.height(40.dp))
 
-        if (isRinging) {
+        if (canAnswer) {
             // Without these two buttons an incoming call could never be answered or rejected.
+            // They vanish once the call is answered, so there is only ever one Answer in the app.
             Row(horizontalArrangement=Arrangement.spacedBy(24.dp)) {
                 FilledTonalButton(onClick={callManager.declineCall()}, colors=ButtonDefaults.filledTonalButtonColors(containerColor=MaterialTheme.colorScheme.errorContainer)) { Text("Decline") }
                 Button(onClick={callManager.acceptCall()}, shape=RoundedCornerShape(20.dp)) { Text("Answer") }

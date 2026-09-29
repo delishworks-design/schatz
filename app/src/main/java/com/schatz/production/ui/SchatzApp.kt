@@ -143,6 +143,12 @@ fun SchatzApp(
     // consumed here or the user stays on a dead call screen.
     LaunchedEffect(callState) {
         val media = if (callManager.isVideoEnabled.value) CallMedia.VIDEO else CallMedia.AUDIO
+        // Direction has to come from the live call, not from the state being logged. These
+        // branches used to hardcode isFromMe (false for missed/declined/failed, true for ended),
+        // which is what made history rows read as the wrong direction - an outgoing call that
+        // failed showed up as incoming. A decline is only ever the local user hanging up, so it
+        // is the one case that is always ours.
+        val outgoing = callManager.isIncoming.value.not()
         when (callState) {
             CallState.INCOMING, CallState.RINGING ->
                 // currentCallId used to be hardcoded 0, so the answer/decline actions carried a
@@ -154,19 +160,20 @@ fun SchatzApp(
                 // The notification helper existed but nothing ever called it, so a missed call
                 // only landed in the in-app history and nobody was told.
                 notificationManager.showMissedCallNotification(partnerName, callManager.isVideoEnabled.value)
-                callHistoryManager.addFromCallState(callState, partnerId, partnerName, media, callManager.duration.value, false)
+                callHistoryManager.addFromCallState(callState, partnerId, partnerName, media, callManager.duration.value, outgoing)
                 callManager.reset()
             }
 
             CallState.DECLINED, CallState.BUSY -> {
                 notificationManager.cancelIncomingCallNotification()
-                callHistoryManager.addFromCallState(callState, partnerId, partnerName, media, callManager.duration.value, false)
+                // We declined or hung up, so this one is always our own action.
+                callHistoryManager.addFromCallState(callState, partnerId, partnerName, media, callManager.duration.value, true)
                 callManager.reset()
             }
 
             CallState.FAILED -> {
                 notificationManager.cancelIncomingCallNotification()
-                callHistoryManager.addFromCallState(callState, partnerId, partnerName, media, callManager.duration.value, false)
+                callHistoryManager.addFromCallState(callState, partnerId, partnerName, media, callManager.duration.value, outgoing)
                 // Hold FAILED briefly so the call screen can show the real TDLib reason; an
                 // instant reset made the failure invisible - the screen flashed back to chat.
                 delay(4000)
@@ -175,7 +182,7 @@ fun SchatzApp(
 
             CallState.ENDED -> {
                 notificationManager.cancelIncomingCallNotification()
-                callHistoryManager.addFromCallState(callState, partnerId, partnerName, media, callManager.duration.value, true)
+                callHistoryManager.addFromCallState(callState, partnerId, partnerName, media, callManager.duration.value, outgoing)
                 callManager.reset()
             }
 

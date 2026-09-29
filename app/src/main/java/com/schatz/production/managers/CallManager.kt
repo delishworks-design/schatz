@@ -86,22 +86,76 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
     private var timer: java.util.Timer? = null
     /** Fires if tgcalls never reaches established, so the UI cannot be stuck on media connecting. */
     private var mediaFallbackTimer: java.util.Timer? = null
+    /** The call id already answered, so a duplicate tap cannot send a second AcceptCall. */
+    private var answeredCallId: Int = 0
+    /**
+     * States already acted on, for the call identified by [dedupeCallId]. TDLib repeats UpdateCall,
+     * and re-running a branch re-fires its side effects, so repeats are dropped.
+     */
+    private val handledStates = java.util.LinkedHashSet<CallState>()
+
+    /** The call the [handledStates] set belongs to; TDLib recycles ids, so it must be re-keyed. */
+    private var dedupeCallId: Int = 0
+    /** Set when a ringing call is answered, so the screen stops offering Answer/Decline. */
+    private val _isAnswered = MutableStateFlow(false)
+    val isAnswered: StateFlow<Boolean> = _isAnswered
     private val isOutgoingCall = java.util.concurrent.atomic.AtomicBoolean(false)
 
     fun init() {
-        tdLib.onCallUpdate = { call ->
+        // Explicit label: this lambda is assigned to a property, so the implicit
+        // return@onCallUpdate label does not exist.
+        tdLib.onCallUpdate = callUpdate@{ call ->
             if (call.id != 0) _currentCallId.value = call.id
             if (call.userId != 0L) _peerId.value = call.userId
             // TDLib reports the video flag on the call itself. Trusting it keeps the notification,
             // the call screen and the history row from all disagreeing.
             _isVideoEnabled.value = call.isVideo
 
+            // TDLib re-sends UpdateCall for the same call and state as the handshake progresses.
+            // Re-applying a state we already applied re-fired the branch side effects (history
+            // entries, teardown, engine restarts) and let a repeated CallStatePending flip CALLING
+            // to RINGING, which is what made an outgoing call read as an incoming one. Nothing in
+            // the when-block below is idempotent, so skip a state we already handled *for this
+            // call id* - the id is part of the key because TDLib recycles small integers, and a
+            // new call must not inherit the previous call's verdict.
+            val incoming = when (val s = call.state) {
+                is TdApi.CallStatePending -> if (call.isOutgoing) CallState.CALLING else CallState.RINGING
+                is TdApi.CallStateExchangingKeys -> CallState.CONNECTING
+                is TdApi.CallStateReady -> CallState.MEDIA_CONNECTING
+                is TdApi.CallStateHangingUp -> CallState.ENDED
+                is TdApi.CallStateDiscarded -> when (s.reason) {
+                    is TdApi.CallDiscardReasonDeclined -> CallState.DECLINED
+                    is TdApi.CallDiscardReasonMissed -> CallState.MISSED
+                    is TdApi.CallDiscardReasonDisconnected -> CallState.FAILED
+                    else -> CallState.ENDED
+                }
+                is TdApi.CallStateError -> CallState.FAILED
+                else -> null
+            }
+            if (incoming != null) {
+                // A different call id than the one we have been tracking: start over.
+                if (dedupeCallId != call.id) {
+                    dedupeCallId = call.id
+                    handledStates.clear()
+                }
+                if (!handledStates.add(incoming)) {
+                    Log.d(TAG, "onCallUpdate: $incoming already handled for call ${call.id}, ignoring repeat")
+                    return@callUpdate
+                }
+            }
+
             when (call.state) {
                 // A pending call is CALLING for the caller and RINGING for the callee. TDLib sends
                 // CallStatePending for both, so isOutgoing is the only way to tell them apart.
-                is TdApi.CallStatePending ->
-                    if (call.isOutgoing) _callState.value = CallState.CALLING
-                    else { isOutgoingCall.set(false); _isIncoming.value = true; _callState.value = CallState.RINGING }
+                // Either way this is a NEW call, so every per-call guard is cleared here. Leaving
+                // answeredCallId set would make the next incoming call refuse its own Answer.
+                is TdApi.CallStatePending -> {
+                    answeredCallId = 0
+                    _isAnswered.value = false
+                    isOutgoingCall.set(call.isOutgoing)
+                    _isIncoming.value = !call.isOutgoing
+                    _callState.value = if (call.isOutgoing) CallState.CALLING else CallState.RINGING
+                }
 
                 is TdApi.CallStateExchangingKeys -> _callState.value = CallState.CONNECTING
 
@@ -200,15 +254,35 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
         _duration.value = 0
         _lastError.value = null
         _isIncoming.value = false
+        _isAnswered.value = false
+        // TDLib assigns the call id only after CreateCall is answered, so the previous call's id
+        // must not be able to veto this one. -1 cannot match a real id, so the guard stays armed
+        // but harmless until TDLib reports the new call.
+        answeredCallId = -1
         isOutgoingCall.set(true)
         _callState.value = CallState.CALLING
         tdLib.createCall(userId, isVideo)
     }
 
-    /** Answers the ringing call. callId defaults to the id TDLib last reported. */
+    /**
+     * Answers the ringing call. callId defaults to the id TDLib last reported.
+     *
+     * Guarded twice on purpose. One tap on the incoming notification fires TWO of these: the
+     * shade action, then the Answer button on the call screen the full-screen intent opened. The
+     * first call moved the state to CONNECTING before this function used to validate anything, so
+     * the second one sailed through and TDLib answered it with "call not found" - which on this
+     * TDLib build ends in a native abort, taking the call and the app with it. Requiring a
+     * ringing state stops the duplicate, and the id backstop covers the case where the state
+     * flaps back to RINGING before the first request is answered.
+     */
     fun acceptCall(callId: Int = _currentCallId.value) {
-        if (callId == 0) return
+        if (CallGuards.canAnswer(_currentCallId.value, callId, answeredCallId, _callState.value) != CallGuards.Decision.ALLOW) {
+            Log.w(TAG, "acceptCall ignored: id=$callId current=${_currentCallId.value} state=${_callState.value} answered=$answeredCallId")
+            return
+        }
         CrashReporter.note("acceptCall id=$callId")
+        answeredCallId = callId
+        _isAnswered.value = true
         _lastError.value = null
         _isIncoming.value = false
         _callState.value = CallState.CONNECTING
@@ -220,25 +294,39 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
      * app-level handler can log it to the call history and cancel the notification; calling
      * reset() here made StateFlow conflate DECLINED straight into IDLE, so a decline was
      * silently dropped and the incoming-call notification never went away.
+     *
+     * The liveness check runs BEFORE discardCall, not after: the old order sent the discard to
+     * TDLib first, so a stale Decline tap from an old notification discarded a call the user had
+     * already moved on from. Declining stays legal through the media handshake on purpose - if
+     * tgcalls never establishes, this is the only way out.
      */
     fun declineCall(callId: Int = _currentCallId.value) {
-        if (callId != 0) tdLib.discardCall(callId, isDisconnected = false)
-        // Only a live call may decline. A stale Decline tap from an old notification must not
-        // fabricate a DECLINED history entry from IDLE.
-        if (_callState.value.isLive()) {
-            _callState.value = CallState.DECLINED
-            _isIncoming.value = false
-            stopTimer(preserveDuration = true)
+        if (CallGuards.canDiscard(_currentCallId.value, callId, _callState.value) != CallGuards.Decision.ALLOW) {
+            Log.w(TAG, "declineCall ignored: id=$callId current=${_currentCallId.value} state=${_callState.value}")
+            return
         }
+        if (_callState.value == CallState.INCOMING || _callState.value == CallState.RINGING) {
+            answeredCallId = callId
+        }
+        tdLib.discardCall(callId, isDisconnected = false)
+        _callState.value = CallState.DECLINED
+        _isIncoming.value = false
+        stopTimer(preserveDuration = true)
     }
 
     fun endCall() {
         val id = _currentCallId.value
-        val wasLive = _callState.value.isLive()
-        if (id != 0) tdLib.discardCall(id, isDisconnected = true, duration = _duration.value.toInt())
+        // Same rule as declineCall: nothing reaches TDLib for a call that is not live, and an ENDED
+        // is only published for a real call. Publishing it unconditionally wrote a bogus history
+        // row whenever a stale End tap landed while the app sat idle in the chat.
+        if (CallGuards.canDiscard(_currentCallId.value, id, _callState.value) != CallGuards.Decision.ALLOW) {
+            Log.w(TAG, "endCall ignored: id=$id current=${_currentCallId.value} state=${_callState.value}")
+            return
+        }
+        tdLib.discardCall(id, isDisconnected = true, duration = _duration.value.toInt())
         _callState.value = CallState.ENDED
         _isIncoming.value = false
-        stopTimer(preserveDuration = wasLive)
+        stopTimer(preserveDuration = true)
     }
 
     /**
@@ -249,6 +337,9 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
         stopTimer(preserveDuration = false)
         teardownMedia()
         _currentCallId.value = 0
+        answeredCallId = 0
+        handledStates.clear()
+        _isAnswered.value = false
         _isIncoming.value = false
         _lastError.value = null
         _readyInfo.value = null
@@ -264,23 +355,16 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
         val ctx = appContext ?: run {
             Log.w(TAG, "no context; media engine not started")
             _isEngineAvailable.value = false
-            return
-        }
-        val ok = TgCallsBridge.start(ctx, ready, isOutgoing = isOutgoingCall.get())
-        _isEngineAvailable.value = ok
-        if (!ok) {
-            CrashReporter.note("media engine NOT started")
-            Log.w(TAG, "media engine unavailable (libtgcallsjni.so missing?) - signaling only")
-            // Without an engine there will be no media callback, so the call must not sit in
-            // MEDIA_CONNECTING forever. Fall back to the signalling-only state.
+            // No engine and no fallback timer: fall back now or the call hangs on media connecting.
             _callState.value = CallState.CONNECTED
             if (timer == null) startTimer()
             return
         }
-        CallAudioRouter.enterCall(ctx)
 
-        // tgcalls reports from a native thread; the UI flows are thread-safe but the call timer
-        // must only be started once, so post the promotion to the main thread.
+        // Wire the listener BEFORE starting the engine. tgcalls can report its first state from a
+        // native thread the moment the instance is created, and a listener attached afterwards
+        // misses that report - the call then sat on "Connecting media..." until the 30s fallback
+        // even though media was up immediately.
         TgCallsBridge.onMediaStateChanged = { mediaState, remoteMuted, bars ->
             val handler = android.os.Handler(android.os.Looper.getMainLooper())
             handler.post {
@@ -291,6 +375,31 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
                     _callState.value = CallState.CONNECTED
                     if (timer == null) startTimer()
                 }
+            }
+        }
+
+        val ok = TgCallsBridge.start(ctx, ready, isOutgoing = isOutgoingCall.get())
+        _isEngineAvailable.value = ok
+        if (!ok) {
+            CrashReporter.note("media engine NOT started")
+            Log.w(TAG, "media engine unavailable (libtgcallsjni.so missing?) - signaling only")
+            TgCallsBridge.onMediaStateChanged = null
+            // Without an engine there will be no media callback, so the call must not sit in
+            // MEDIA_CONNECTING forever. Fall back to the signalling-only state.
+            _callState.value = CallState.CONNECTED
+            if (timer == null) startTimer()
+            return
+        }
+        CallAudioRouter.enterCall(ctx)
+
+        // start() may already have established before this line; seed from the bridge's own state
+        // so a fast connection is not mistaken for a pending one.
+        val current = TgCallsBridge.state.value
+        if (current == com.schatz.production.voip.Instance.STATE_ESTABLISHED) {
+            _isMediaActive.value = true
+            if (_callState.value == CallState.MEDIA_CONNECTING) {
+                _callState.value = CallState.CONNECTED
+                if (timer == null) startTimer()
             }
         }
 
@@ -327,6 +436,10 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
     }
 
     fun toggleMute() {
+        if (!_callState.value.isLive()) {
+            Log.w(TAG, "toggleMute ignored: no live call (${_callState.value})")
+            return
+        }
         _isMuted.value = !_isMuted.value
         tdLib.setMuted(_isMuted.value)
         TgCallsBridge.setMute(_isMuted.value)
@@ -341,7 +454,20 @@ class CallManager(private val tdLib: TdLibUpdateManager, private val appContext:
 
     fun switchCamera() {}
 
-    fun release() { stopTimer(preserveDuration = false) }
+    /**
+     * The activity is going away. Stopping only the call timer left the native engine running and
+     * the audio route pinned in MODE_IN_COMMUNICATION, so the microphone stayed held and the
+     * recorder never got released - which is also what makes the next call fail to open audio.
+     */
+    fun release() {
+        stopTimer(preserveDuration = false)
+        mediaFallbackTimer?.cancel()
+        mediaFallbackTimer = null
+        if (_callState.value.isLive()) {
+            teardownMedia()
+        }
+        TgCallsBridge.onMediaStateChanged = null
+    }
 
     private fun startTimer() {
         timer?.cancel()

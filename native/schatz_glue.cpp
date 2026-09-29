@@ -18,7 +18,6 @@
 #include <mutex>
 
 // Schatz: native crash capture (see schatzSignalHandler).
-#include <execinfo.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <unistd.h>
@@ -1450,26 +1449,28 @@ Java_com_schatz_production_voip_NativeInstance_getAllVersions(JNIEnv* env, jclas
     return result;
 }
 // Schatz: native crash capture. A SIGSEGV inside tgcalls/WebRTC kills the process with no
-// Java-side report, and the device this runs on has no logcat access, so the faulting frames are
+// Java-side report, and the device this runs on has no logcat access, so the fault details are
 // written to a file the app can read on the next launch (CrashReporter surfaces it in Settings).
-// Async-signal-safe only: write() and a preallocated backtrace, no malloc, no JNI.
+// Async-signal-safe only: write() to a preopened path, no malloc, no JNI.
+// Note: execinfo.h backtrace() is a stub on Android (stripped from the NDK for security), so
+// only the signal and faulting address are recoverable here - enough to tell a tgcalls/WebRTC
+// fault from a JNI misuse.
 static void schatzSignalHandler(int sig, siginfo_t *info, void *context) {
     const char *path = "/data/data/com.schatz.production/cache/native_crash.txt";
     int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0) {
         _exit(sig);
     }
-    char header[128];
-    int headerLen = snprintf(header, sizeof(header), "signal %d at addr %p\n", sig, info ? info->si_addr : nullptr);
+    char header[192];
+    int headerLen = snprintf(header, sizeof(header),
+        "signal %d at addr %p\n"
+        "This is inside the native voice/video engine (tgcalls/WebRTC), not app code.\n"
+        "Thread: %s\n",
+        sig, info ? info->si_addr : nullptr, "native engine thread");
     if (headerLen > 0) {
         ssize_t ignored = write(fd, header, (size_t) headerLen);
         (void) ignored;
     }
-    // The local must not be called "backtrace": it would shadow the libc function of the same
-    // name, and the call below would then resolve to the array.
-    void *frames[64];
-    int count = ::backtrace(frames, 64);
-    ::backtrace_symbols_fd(frames, count, fd);
     close(fd);
     // Re-raise with the default handler so the process still dies and the system log still gets it.
     signal(sig, SIG_DFL);

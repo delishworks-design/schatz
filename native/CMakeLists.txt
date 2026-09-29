@@ -4,8 +4,10 @@
 # proven voip/tgcalls/webrtc build (voip/CMakeLists.txt, unchanged) compiles into a
 # standalone libtgcallsjni.so instead of the full libtmessages.
 #
-# Preamble and targets mirror drklo/telegram's jni/CMakeLists.txt, minus everything
-# media/td/sqlite related (ffmpeg, libvpx, dav1d, tlottie, tgnet, breakpad, sqlite).
+# Preamble and targets mirror drklo/telegram's jni/CMakeLists.txt, minus only what the
+# voip stack never touches (tlottie, tgnet, breakpad, sqlite - those serve the app UI/DB).
+# ffmpeg/vpx/dav1d/tdutils ARE link deps of the voip stack (group streaming parts, glue
+# logging) and come in as prebuilts from jni/prebuild/lib/<abi>/.
 # Source of truth: drklo/telegram @ master (see native/README.md).
 
 cmake_minimum_required(VERSION 3.16)
@@ -65,6 +67,27 @@ target_link_libraries(webrtc_absl INTERFACE
 )
 
 # Prebuilt static libraries required by the voip stack (from jni/prebuild/lib/<abi>/).
+add_library(avutil STATIC IMPORTED)
+set_target_properties(avutil PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/prebuild/lib/${ANDROID_ABI}/libavutil.a)
+
+add_library(avformat STATIC IMPORTED)
+set_target_properties(avformat PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/prebuild/lib/${ANDROID_ABI}/libavformat.a)
+
+add_library(avcodec STATIC IMPORTED)
+set_target_properties(avcodec PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/prebuild/lib/${ANDROID_ABI}/libavcodec.a)
+
+add_library(swresample STATIC IMPORTED)
+set_target_properties(swresample PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/prebuild/lib/${ANDROID_ABI}/libswresample.a)
+
+add_library(swscale STATIC IMPORTED)
+set_target_properties(swscale PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/prebuild/lib/${ANDROID_ABI}/libswscale.a)
+
+add_library(libvpx STATIC IMPORTED)
+set_target_properties(libvpx PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/prebuild/lib/${ANDROID_ABI}/libvpx.a)
+
+add_library(libdav1d STATIC IMPORTED)
+set_target_properties(libdav1d PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/prebuild/lib/${ANDROID_ABI}/libdav1d.a)
+
 add_library(crypto STATIC IMPORTED)
 set_target_properties(crypto PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/prebuild/lib/${ANDROID_ABI}/libcrypto.a)
 
@@ -76,6 +99,9 @@ set_target_properties(libopus PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTOR
 
 add_library(tde2e STATIC IMPORTED)
 set_target_properties(tde2e PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/prebuild/lib/${ANDROID_ABI}/libtde2e.a)
+
+add_library(tdutils STATIC IMPORTED)
+set_target_properties(tdutils PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/prebuild/lib/${ANDROID_ABI}/libtdutils.a)
 
 # voip: rnnoise + tgcalls_tp (libsrtp, usrsctp, crc32c) + tgcalls (+ webrtc subset) + voipandroid
 # (platform/android + our schatz_glue.cpp). Unchanged from upstream.
@@ -103,17 +129,28 @@ target_include_directories(tgcallsjni PRIVATE
 
 target_link_options(tgcallsjni PRIVATE "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/exports.map")
 
+# Same link set as drklo/telegram's NATIVE_LIB (minus tgnet/tlottie/sqlite/breakpad,
+# which the voip stack does not reference), plus jnigraphics for the glue's bitmap paths.
 target_link_libraries(tgcallsjni
         -Wl,--whole-archive rnnoise openh264 voipandroid -Wl,--no-whole-archive
         webrtc_absl
         tgcalls
-        tgcalls_tp
         wasm
-        tde2e
+        tgcalls_tp
+        swscale
+        avformat
+        avcodec
+        swresample
+        libvpx
+        libdav1d
         libopus
+        tde2e
+        tdutils
         yuv
+        avutil
         ssl
         crypto
+        jnigraphics
         cpufeatures
         log
         z

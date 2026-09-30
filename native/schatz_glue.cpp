@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <ucontext.h>
+#include <cstring>
 #include <unistd.h>
 
 #include "pc/video_track.h"
@@ -1586,23 +1587,71 @@ static void schatzSignalHandler(int sig, siginfo_t *info, void *context) {
         (void) lr;
 #endif
         uintptr_t base = 0;
+        uintptr_t sp = 0;
+        const char *pcLib = "?";
+        const char *pcSym = "?";
         if (pc) {
-            Dl_info info2;
-            if (dladdr(reinterpret_cast<void *>(pc), &info2) && info2.dli_fbase) {
-                base = reinterpret_cast<uintptr_t>(info2.dli_fbase);
+            Dl_info dli;
+            if (dladdr(reinterpret_cast<void *>(pc), &dli)) {
+                if (dli.dli_fbase) base = reinterpret_cast<uintptr_t>(dli.dli_fbase);
+                if (dli.dli_fname) pcLib = dli.dli_fname;
+                if (dli.dli_sname) pcSym = dli.dli_sname;
             }
         }
-        char regs[224];
+#if defined(__aarch64__)
+        sp = static_cast<uintptr_t>(uc->uc_mcontext.sp);
+#elif defined(__arm__)
+        sp = static_cast<uintptr_t>(uc->uc_mcontext.arm_sp);
+#endif
+        char regs[512];
         int regsLen = snprintf(regs, sizeof(regs),
             "pc: 0x%lx\n"
             "lr: 0x%lx\n"
+            "sp: 0x%lx\n"
             "so_base: 0x%lx\n"
-            "pc_offset: 0x%lx\n",
-            (unsigned long) pc, (unsigned long) lr, (unsigned long) base,
-            (unsigned long) (pc - base));
+            "pc_offset: 0x%lx\n"
+            "pc_lib: %s\n"
+            "pc_sym: %s\n",
+            (unsigned long) pc, (unsigned long) lr, (unsigned long) sp,
+            (unsigned long) base, (unsigned long) (pc - base), pcLib, pcSym);
         if (regsLen > 0) {
             ssize_t ignored = write(fd, regs, (size_t) regsLen);
             (void) ignored;
+        }
+
+        // A real backtrace, built by hand: execinfo is stubbed on Android, so instead of
+        // backtrace() this walks the stack from the faulting frame's SP and asks dladdr which
+        // library each word belongs to. The words that resolve to this engine are the call chain
+        // that led to the abort, which is what the offset alone could never tell us.
+        if (sp) {
+            auto *words = reinterpret_cast<uintptr_t *>(sp);
+            int found = 0;
+            for (int i = 0; i < 512 && found < 24; i++) {
+                uintptr_t w = words[i];
+                if (w < 0x10000) continue;                 // not a code address
+                Dl_info dli;
+                if (!dladdr(reinterpret_cast<void *>(w), &dli)) continue;
+                if (!dli.dli_fbase || !dli.dli_fname) continue;
+                // Only keep frames from this engine; the runtime's own frames are noise.
+                if (!strstr(dli.dli_fname, "libtgcallsjni")) continue;
+                uintptr_t libBase = reinterpret_cast<uintptr_t>(dli.dli_fbase);
+                char frame[192];
+                int n = snprintf(frame, sizeof(frame),
+                    "frame %2d: 0x%lx  off 0x%lx  %s  %s\n",
+                    found, (unsigned long) w, (unsigned long) (w - libBase),
+                    dli.dli_fname, dli.dli_sname ? dli.dli_sname : "?");
+                if (n > 0) {
+                    ssize_t ignored = write(fd, frame, (size_t) n);
+                    (void) ignored;
+                }
+                found++;
+            }
+            char done[48];
+            int n = snprintf(done, sizeof(done), "frames captured: %d\n", found);
+            if (n > 0) {
+                ssize_t ignored = write(fd, done, (size_t) n);
+                (void) ignored;
+            }
         }
     }
     schatzTrace("!!! signal handler ran - process is aborting now");

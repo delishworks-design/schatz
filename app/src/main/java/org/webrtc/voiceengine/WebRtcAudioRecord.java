@@ -363,6 +363,14 @@ public class WebRtcAudioRecord {
         reportWebRtcAudioRecordInitError("AudioRecord ctor error: " + e.getMessage());
         releaseAudioResources(false);
         return -1;
+      } catch (SecurityException e) {
+        // The upstream code only catches IllegalArgumentException, so a missing RECORD_AUDIO
+        // grant escapes as an exception out of a JNI-called method. The native layer checks for a
+        // pending exception and aborts the process, which is the signal 6 this app kept reporting
+        // from every call. A denied microphone must degrade the call, not kill it.
+        reportWebRtcAudioRecordInitError("RECORD_AUDIO not granted: " + e.getMessage());
+        releaseAudioResources(false);
+        return -1;
       }
     }
     if (audioRecord == null || audioRecord.getState() != AudioRecord.STATE_INITIALIZED) {
@@ -421,6 +429,12 @@ public class WebRtcAudioRecord {
     } catch (IllegalStateException e) {
       reportWebRtcAudioRecordStartError(AudioRecordStartErrorCode.AUDIO_RECORD_START_EXCEPTION, "AudioRecord.startRecording failed: " + e.getMessage());
       return;
+    } catch (SecurityException e) {
+      // See initRecording(): a missing RECORD_AUDIO grant must not escape as an exception into
+      // the native layer, which aborts the process on any pending JNI exception.
+      reportWebRtcAudioRecordStartError(AudioRecordStartErrorCode.AUDIO_RECORD_START_EXCEPTION,
+              "RECORD_AUDIO not granted: " + e.getMessage());
+      return;
     }
     if (deviceAudioRecord.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {
       reportWebRtcAudioRecordStartError(AudioRecordStartErrorCode.AUDIO_RECORD_START_STATE_MISMATCH, "AudioRecord.startRecording failed - incorrect state :" + deviceAudioRecord.getRecordingState());
@@ -448,6 +462,11 @@ public class WebRtcAudioRecord {
       audioRecord.startRecording();
     } catch (IllegalStateException e) {
       reportWebRtcAudioRecordStartError(AudioRecordStartErrorCode.AUDIO_RECORD_START_EXCEPTION, "AudioRecord.startRecording failed: " + e.getMessage());
+      return false;
+    } catch (SecurityException e) {
+      // See initRecording(): a missing RECORD_AUDIO grant escapes into the native layer otherwise.
+      reportWebRtcAudioRecordStartError(AudioRecordStartErrorCode.AUDIO_RECORD_START_EXCEPTION,
+              "RECORD_AUDIO not granted: " + e.getMessage());
       return false;
     }
     if (audioRecord.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {

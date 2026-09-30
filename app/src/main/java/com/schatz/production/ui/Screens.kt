@@ -858,7 +858,7 @@ fun VaultScreenWithSync(syncManager: SharedVaultSyncManager, myId: Long, partner
  * deliberately carries no personal data: no name, no phone number, no chat id - just the engine
  * state, the call trail and the crash, which is what actually identifies a failure.
  */
-private fun buildDiagnosticsBundle(): String {
+private fun buildDiagnosticsBundle(context: Context): String {
     val engineState = TgCallsBridge.state.value
     val stateName = when (engineState) {
         0 -> "idle"
@@ -884,6 +884,21 @@ private fun buildDiagnosticsBundle(): String {
         appendLine()
         appendLine("-- call trail --")
         appendLine(CrashReporter.breadcrumbsSnapshot())
+        appendLine()
+        appendLine("-- permissions --")
+        appendLine(
+            listOf(
+                android.Manifest.permission.RECORD_AUDIO to "RECORD_AUDIO (microphone)",
+                android.Manifest.permission.CAMERA to "CAMERA",
+                android.Manifest.permission.POST_NOTIFICATIONS to "POST_NOTIFICATIONS",
+                android.Manifest.permission.BLUETOOTH_CONNECT to "BLUETOOTH_CONNECT",
+            ).joinToString("\n") { (perm, label) ->
+                "  $label: " + if (
+                    androidx.core.content.ContextCompat.checkSelfPermission(context, perm) ==
+                    android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) "GRANTED" else "NOT GRANTED"
+            }
+        )
         appendLine()
         appendLine("-- engine warnings/fatals (unbuffered, survives the abort) --")
         appendLine(CrashReporter.engineFatals() ?: "(nothing at WARNING or above was logged)")
@@ -987,7 +1002,7 @@ fun SettingsScreen(
                         Spacer(Modifier.height(8.dp))
                         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                             Button(onClick = {
-                                val bundle = buildDiagnosticsBundle()
+                                val bundle = buildDiagnosticsBundle(context)
                                 // The platform clipboard, not LocalClipboardManager: deprecated in
                                 // the Compose version this app builds against.
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager

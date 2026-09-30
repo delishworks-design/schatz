@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.schatz.production.managers.CrashReporter
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 
@@ -36,9 +37,16 @@ fun RequestRuntimePermissions() {
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { granted ->
-        // The result is deliberately not acted on here: a refusal only means the matching feature
-        // stays unavailable, and each screen already degrades to a disabled control.
-        requested = true
+        // The result used to be discarded entirely, so a refused microphone was invisible: the
+        // app looked ready, the engine then failed to open AudioRecord, and the failure surfaced
+        // as a native abort with nothing readable. Record what was actually granted, and keep
+        // asking on the next entry so a single refusal is not permanent.
+        val denied = granted.filterValues { !it }.keys.toList()
+        CrashReporter.note(
+            if (denied.isEmpty()) "permissions: all granted"
+            else "permissions: DENIED ${denied.joinToString(", ")}"
+        )
+        requested = !denied.isEmpty()
     }
 
     LaunchedEffect(Unit) {

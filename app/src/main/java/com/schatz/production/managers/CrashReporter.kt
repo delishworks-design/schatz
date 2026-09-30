@@ -58,6 +58,7 @@ object CrashReporter {
      * process immediately, so an in-memory trail would be gone by the time the user came back to
      * read it - which is precisely the case this has to capture.
      */
+    @JvmStatic
     fun note(message: String) {
         val line = "${System.currentTimeMillis()} $message"
         synchronized(breadcrumbs) {
@@ -142,6 +143,20 @@ object CrashReporter {
             .getOrNull()?.takeIf { it.isNotBlank() }
     }
 
+    /**
+     * Warnings and fatals from the engine, written unbuffered by the native layer so they survive
+     * the abort that follows them. This is where the reason for a native crash is actually
+     * recorded - the engine's own log file loses its last line because abort() wins the race
+     * against the flush.
+     */
+    fun engineFatals(lines: Int = 40): String? {
+        val ctx = appContext ?: return null
+        val file = File(ctx.cacheDir, "tgcalls_fatal.log")
+        if (!file.exists()) return null
+        return runCatching { file.readLines().takeLast(lines).joinToString("\n") }
+            .getOrNull()?.takeIf { it.isNotBlank() }
+    }
+
     fun clear() {
         val ctx = appContext ?: return
         synchronized(breadcrumbs) { breadcrumbs.clear() }
@@ -149,6 +164,7 @@ object CrashReporter {
         File(ctx.cacheDir, TRAIL_FILE).delete()
         File(ctx.cacheDir, "native_crash.txt").delete()
         File(ctx.cacheDir, "native_trace.txt").delete()
+        File(ctx.cacheDir, "tgcalls_fatal.log").delete()
     }
 
     private fun writeReport(threadName: String, throwable: Throwable) {

@@ -6,6 +6,7 @@
 #include <platform/android/AndroidInterface.h>
 #include <platform/android/AndroidContext.h>
 #include <rtc_base/ssl_adapter.h>
+#include <rtc_base/logging.h>
 #include <modules/utility/include/jvm_android.h>
 #include <sdk/android/native_api/base/init.h>
 #include <voip/webrtc/media/base/media_constants.h>
@@ -33,6 +34,42 @@
 #include "e2e_api.h"
 
 using namespace tgcalls;
+
+// Schatz: an unbuffered copy of the engine log.
+//
+// The engine aborts through a CHECK (RTC_FATAL / CHECK_EXCEPTION), and abort() kills the process
+// before the buffered log file is flushed - which is why the message that actually explains the
+// crash never appeared. This sink writes straight through with write(2), so whatever the engine
+// logged on its way to the abort survives on disk.
+//
+// Only WARNING and above is captured: the engine's INFO stream is several hundred lines of setup
+// noise per call, and it is not what we are looking for.
+class SchatzUnbufferedLogSink : public rtc::LogSink {
+public:
+    void OnLogMessage(const std::string& message) override { write(message); }
+    void OnLogMessage(const std::string& message, rtc::LoggingSeverity) override { write(message); }
+    void OnLogMessage(const std::string& message, rtc::LoggingSeverity, const char*) override { write(message); }
+
+private:
+    static void write(const std::string &message) {
+        int fd = open("/data/data/com.schatz.production/cache/tgcalls_fatal.log",
+                      O_WRONLY | O_CREAT | O_APPEND, 0644);
+        if (fd < 0) return;
+        std::string line = message;
+        line.push_back('\n');
+        ssize_t ignored = write(fd, line.data(), line.size());
+        (void) ignored;
+        close(fd);
+    }
+};
+
+static std::shared_ptr<SchatzUnbufferedLogSink> schatzLogSink;
+
+static void installUnbufferedLogSink() {
+    if (schatzLogSink) return;
+    schatzLogSink = std::make_shared<SchatzUnbufferedLogSink>();
+    rtc::LogMessage::AddLogToStream(schatzLogSink.get(), rtc::LS_WARNING);
+}
 
 // Schatz: defined near the bottom with the signal handler. Declared up here because
 // makeNativeInstance - which is far above it - is where the tracing matters most.
@@ -492,6 +529,8 @@ void initWebRTC(JNIEnv *env) {
     webrtc::InitAndroid(vm);
     webrtc::JVM::Initialize(vm);
     rtc::InitializeSSL();
+    // Before anything can abort, so the reason is captured.
+    installUnbufferedLogSink();
     webrtcLoaded = true;
 
     DEBUG_REF("NativeInstanceClass");

@@ -117,6 +117,9 @@ object TgCallsBridge {
                 val app = context.applicationContext
                 ApplicationLoader.applicationContext = app
                 ContextUtils.initialize(app)
+                // Vendored webrtc logs only to a logger this device cannot show; keep warnings
+                // and errors in the diagnostics trail instead.
+                org.webrtc.SchatzWebRtcLoggable.install()
                 System.loadLibrary("tgcallsjni")
                 val versions = try {
                     NativeInstance.getAllVersions().joinToString()

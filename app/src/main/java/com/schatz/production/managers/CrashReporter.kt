@@ -149,7 +149,7 @@ object CrashReporter {
      * recorded - the engine's own log file loses its last line because abort() wins the race
      * against the flush.
      */
-    fun engineFatals(lines: Int = 40): String? {
+    fun engineFatals(lines: Int = 90): String? {
         val ctx = appContext ?: return null
         val file = File(ctx.cacheDir, "tgcalls_fatal.log")
         if (!file.exists()) return null

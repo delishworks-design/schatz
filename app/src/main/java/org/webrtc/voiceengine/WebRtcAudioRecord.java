@@ -243,11 +243,27 @@ public class WebRtcAudioRecord {
 
   WebRtcAudioRecord(long nativeAudioRecord, int type) {
     Logging.d(TAG, "ctor" + WebRtcAudioUtils.getThreadInfo());
-    this.nativeAudioRecord = nativeAudioRecord;
-    effects = WebRtcAudioEffects.create();
-    captureType = type;
-    if (captureType == 2 && Instance == null) {
-      Instance = this;
+    try {
+      this.nativeAudioRecord = nativeAudioRecord;
+      effects = WebRtcAudioEffects.create();
+      captureType = type;
+      if (captureType == 2 && Instance == null) {
+        Instance = this;
+      }
+      Logging.d(TAG, "ctor completed");
+    } catch (Throwable t) {
+      // Temporary diagnostics: the native layer aborts the process on any exception thrown here
+      // (CHECK_EXCEPTION after NewObjectV), and the abort happens before the buffered log flush,
+      // so the reason was invisible. Record it where it can survive, then let it propagate
+      // unchanged so behaviour is identical.
+      try {
+        Class.forName("com.schatz.production.managers.CrashReporter")
+            .getMethod("note", String.class)
+            .invoke(null, "WebRtcAudioRecord ctor threw: " + t);
+      } catch (Throwable ignored) {
+        // Diagnostics must never change the outcome.
+      }
+      throw t;
     }
   }
 

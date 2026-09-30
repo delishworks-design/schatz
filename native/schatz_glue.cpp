@@ -70,7 +70,11 @@ static std::shared_ptr<SchatzUnbufferedLogSink> schatzLogSink;
 static void installUnbufferedLogSink() {
     if (schatzLogSink) return;
     schatzLogSink = std::make_shared<SchatzUnbufferedLogSink>();
-    rtc::LogMessage::AddLogToStream(schatzLogSink.get(), rtc::LS_WARNING);
+    // INFO, not WARNING: the engine's own log file is buffered, so its tail is unreliable - the
+    // last few lines are still in the buffer when the abort happens and are lost. This sink is
+    // unbuffered, so the final INFO line before the abort is the only reliable "where did it die"
+    // marker available without a backtrace.
+    rtc::LogMessage::AddLogToStream(schatzLogSink.get(), rtc::LS_INFO);
 }
 
 // Schatz: defined near the bottom with the signal handler. Declared up here because

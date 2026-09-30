@@ -46,12 +46,14 @@ using namespace tgcalls;
 // noise per call, and it is not what we are looking for.
 class SchatzUnbufferedLogSink : public rtc::LogSink {
 public:
-    void OnLogMessage(const std::string& message) override { write(message); }
-    void OnLogMessage(const std::string& message, rtc::LoggingSeverity) override { write(message); }
-    void OnLogMessage(const std::string& message, rtc::LoggingSeverity, const char*) override { write(message); }
+    void OnLogMessage(const std::string& message) override { append(message); }
+    void OnLogMessage(const std::string& message, rtc::LoggingSeverity) override { append(message); }
+    void OnLogMessage(const std::string& message, rtc::LoggingSeverity, const char*) override { append(message); }
 
 private:
-    static void write(const std::string &message) {
+    // Not named write(): inside this class that would resolve to our own member instead of the
+    // write(2) syscall the body uses.
+    static void append(const std::string &message) {
         int fd = open("/data/data/com.schatz.production/cache/tgcalls_fatal.log",
                       O_WRONLY | O_CREAT | O_APPEND, 0644);
         if (fd < 0) return;

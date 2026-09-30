@@ -129,6 +129,19 @@ object CrashReporter {
         return if (last.isEmpty()) null else last.joinToString("\n")
     }
 
+    /**
+     * The engine's own log. We hand tgcalls a logPath at startup and it writes every webrtc and
+     * tgcalls message there, including the RTC_FATAL line that precedes a native abort. With no
+     * backtrace and no logcat on this device, that file is the only place the reason is written.
+     */
+    fun engineLog(lines: Int = 60): String? {
+        val ctx = appContext ?: return null
+        val file = File(ctx.cacheDir, "schatz_tgcalls.log")
+        if (!file.exists()) return null
+        return runCatching { file.readLines().takeLast(lines).joinToString("\n") }
+            .getOrNull()?.takeIf { it.isNotBlank() }
+    }
+
     fun clear() {
         val ctx = appContext ?: return
         synchronized(breadcrumbs) { breadcrumbs.clear() }

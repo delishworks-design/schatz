@@ -928,6 +928,7 @@ JNIEXPORT jlong JNICALL Java_com_schatz_production_voip_NativeInstance_makeNativ
                     encryptionKeyObject.getBooleanField("isOutgoing") == JNI_TRUE),
             .videoCapture =  videoCapture,
             .stateUpdated = [platformContext](State state) {
+                schatzTrace("cb: stateUpdated");
                 jint javaState = asJavaState(state);
                 jobject globalRef = ((AndroidContext *) platformContext.get())->getJavaPeerInstance();
                 tgvoip::jni::DoWithJNI([globalRef, javaState](JNIEnv *env) {
@@ -957,12 +958,14 @@ JNIEXPORT jlong JNICALL Java_com_schatz_production_voip_NativeInstance_makeNativ
                 });
             },
             .remoteMediaStateUpdated = [platformContext](AudioState audioState, VideoState videoState) {
+                schatzTrace("cb: remoteMediaStateUpdated");
                 jobject globalRef = ((AndroidContext *) platformContext.get())->getJavaPeerInstance();
                 tgvoip::jni::DoWithJNI([globalRef, audioState, videoState](JNIEnv *env) {
                     env->CallVoidMethod(globalRef, env->GetMethodID(NativeInstanceClass, "onRemoteMediaStateUpdated", "(II)V"), (jint) audioState, (jint )videoState);
                 });
             },
             .signalingDataEmitted = [platformContext](const std::vector<uint8_t> &data) {
+                schatzTrace("cb: signalingDataEmitted");
                 jobject globalRef = ((AndroidContext *) platformContext.get())->getJavaPeerInstance();
                 tgvoip::jni::DoWithJNI([globalRef, data](JNIEnv *env) {
                     jbyteArray arr = copyVectorToJavaByteArray(env, data);

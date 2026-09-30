@@ -20,8 +20,10 @@
 
 // Schatz: native crash capture (see schatzSignalHandler).
 #include <ctime>
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <ucontext.h>
 #include <unistd.h>
 
 #include "pc/video_track.h"
@@ -1554,9 +1556,8 @@ static void schatzSignalHandler(int sig, siginfo_t *info, void *context) {
         _exit(sig);
     }
     // time() is async-signal-safe, and without a stamp on the file a crash from an earlier run is
-    // indistinguishable from the one that just happened - which is exactly the confusion the
-    // diagnostics report has to avoid.
-    char header[256];
+    // indistinguishable from the one that just happened.
+    char header[192];
     int headerLen = snprintf(header, sizeof(header),
         "signal %d at addr %p\n"
         "epoch: %ld\n"
@@ -1566,8 +1567,44 @@ static void schatzSignalHandler(int sig, siginfo_t *info, void *context) {
         ssize_t ignored = write(fd, header, (size_t) headerLen);
         (void) ignored;
     }
-    // Same reason as the step trace: the last thing that ran is the only clue available, since
-    // execinfo is stubbed on Android and there is no backtrace to print.
+
+    // execinfo is stubbed on Android, so backtrace() gives nothing. The signal's ucontext still
+    // carries the program counter and link register at the moment of the fault, which is enough to
+    // name the function: the .so load base comes from dladdr, and the resulting offset is looked
+    // up in the symbol table the CI uploads.
+    if (context) {
+        auto *uc = static_cast<ucontext_t *>(context);
+        uintptr_t pc = 0;
+        uintptr_t lr = 0;
+#if defined(__aarch64__)
+        pc = static_cast<uintptr_t>(uc->uc_mcontext.pc);
+        lr = static_cast<uintptr_t>(uc->uc_mcontext.regs[30]);
+#elif defined(__arm__)
+        pc = static_cast<uintptr_t>(uc->uc_mcontext.arm_pc);
+        lr = static_cast<uintptr_t>(uc->uc_mcontext.arm_lr);
+#else
+        (void) lr;
+#endif
+        uintptr_t base = 0;
+        if (pc) {
+            Dl_info info2;
+            if (dladdr(reinterpret_cast<void *>(pc), &info2) && info2.dli_fbase) {
+                base = reinterpret_cast<uintptr_t>(info2.dli_fbase);
+            }
+        }
+        char regs[224];
+        int regsLen = snprintf(regs, sizeof(regs),
+            "pc: 0x%lx\n"
+            "lr: 0x%lx\n"
+            "so_base: 0x%lx\n"
+            "pc_offset: 0x%lx\n",
+            (unsigned long) pc, (unsigned long) lr, (unsigned long) base,
+            (unsigned long) (pc - base));
+        if (regsLen > 0) {
+            ssize_t ignored = write(fd, regs, (size_t) regsLen);
+            (void) ignored;
+        }
+    }
     schatzTrace("!!! signal handler ran - process is aborting now");
     close(fd);
     // Re-raise with the default handler so the process still dies and the system log still gets it.

@@ -45,6 +45,15 @@ cmake -S "$JNI_DIR" -B "$BUILD_DIR" \
 
 cmake --build "$BUILD_DIR" --parallel "$(nproc)" --target tgcallsjni
 
+# Symbol table for the unstripped binary. The crash handler reports the faulting PC as an offset
+# from the .so base, and execinfo is stubbed on Android so there is no runtime backtrace - this
+# table is what turns that offset into a function name.
+LLVM_NM="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
+if [[ -x "$LLVM_NM" ]]; then
+    "$LLVM_NM" -C --defined-only -S "$BUILD_DIR/libtgcallsjni.so" > "$BUILD_DIR/libtgcallsjni.symbols.txt" 2>/dev/null || true
+    echo "symbols: $(wc -l < "$BUILD_DIR/libtgcallsjni.symbols.txt" 2>/dev/null || echo 0) lines"
+fi
+
 # Strip debug/symbol bulk (LTO + -g make the .so ~220MB unstripped; packaging does
 # not re-strip, so do it here - dynamic JNI exports are preserved).
 STRIP="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
@@ -55,4 +64,9 @@ fi
 
 mkdir -p "$OUT_DIR/$ABI"
 cp "$BUILD_DIR/libtgcallsjni.so" "$OUT_DIR/$ABI/libtgcallsjni.so"
+# Kept outside the ABI directory on purpose: the CI APK job merges these artifacts straight into
+# app/src/main/jniLibs, and anything inside an ABI folder gets packaged into the APK.
+if [[ -f "$BUILD_DIR/libtgcallsjni.symbols.txt" ]]; then
+    cp "$BUILD_DIR/libtgcallsjni.symbols.txt" "$OUT_DIR/symbols-$ABI.txt"
+fi
 echo "OK: $OUT_DIR/$ABI/libtgcallsjni.so ($(stat -c%s "$OUT_DIR/$ABI/libtgcallsjni.so") bytes)"
